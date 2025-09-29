@@ -1,3 +1,4 @@
+// This package help us to get environment variable with fallbacks
 package env
 
 import (

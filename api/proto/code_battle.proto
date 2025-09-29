@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+option go_package = "github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/api";
+
+package code_battle;
+
+import "google/protobuf/timestamp.proto";
+
+service CodeBattleService {
+    rpc GetEvents(GetEventsRequest) returns (GetEventsResponse);
+}
+
+message Pagination {
+    int32 page_size = 1;
+    int32 page_index = 2;
+}
+
+message Status {
+    bool success = 1;
+    string message = 2;
+    string error_message = 3;
+}
+
+enum EventType {
+    EVENT_TYPE_UNSPECIFIED = 0;
+    EVENT_TYPE_CODE_BATTLE = 1;
+    EVENT_TYPE_WORKSHOP = 2;
+    EVENT_TYPE_SEMINAR = 3;
+    EVENT_TYPE_SOCIAL = 4;
+}
+
+message Event {
+    string id = 1;
+    string title = 2;
+    string description = 3;
+    EventType type = 4;
+    google.protobuf.Timestamp start_date = 5;
+    google.protobuf.Timestamp end_date = 6;
+}
+
+message GetEventsRequest {
+    Pagination pagination = 1;
+}
+
+message GetEventsResponse {
+    Status status = 1;
+    repeated Event events = 2;
+}

@@ -45,3 +45,35 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event
 	)
 	return i, err
 }
+
+const getEvents = `-- name: GetEvents :many
+SELECT id, title, description, type, started_date, end_date FROM events
+ORDER BY started_date ASC
+`
+
+func (q *Queries) GetEvents(ctx context.Context) ([]Event, error) {
+	rows, err := q.db.Query(ctx, getEvents)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Event
+	for rows.Next() {
+		var i Event
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Type,
+			&i.StartedDate,
+			&i.EndDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
