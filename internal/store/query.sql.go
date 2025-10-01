@@ -11,6 +11,85 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createCodeProblem = `-- name: CreateCodeProblem :one
+INSERT INTO code_problems (title, problem_statement, difficulty)
+VALUES ($1, $2, $3)
+RETURNING id, title, problem_statement, difficulty, created_at
+`
+
+type CreateCodeProblemParams struct {
+	Title            string
+	ProblemStatement string
+	Difficulty       int32
+}
+
+// Code Problems
+func (q *Queries) CreateCodeProblem(ctx context.Context, arg CreateCodeProblemParams) (CodeProblem, error) {
+	row := q.db.QueryRow(ctx, createCodeProblem, arg.Title, arg.ProblemStatement, arg.Difficulty)
+	var i CodeProblem
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.ProblemStatement,
+		&i.Difficulty,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createCodeProblemLanguageDetail = `-- name: CreateCodeProblemLanguageDetail :one
+INSERT INTO code_problem_language_details (code_problem_id, language_id, solution_stub, driver_code, time_constraint_ms, space_constraint_mb)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING code_problem_id, language_id, solution_stub, driver_code, time_constraint_ms, space_constraint_mb
+`
+
+type CreateCodeProblemLanguageDetailParams struct {
+	CodeProblemID     pgtype.UUID
+	LanguageID        pgtype.UUID
+	SolutionStub      string
+	DriverCode        string
+	TimeConstraintMs  int32
+	SpaceConstraintMb int32
+}
+
+// Code Problem Language Details
+func (q *Queries) CreateCodeProblemLanguageDetail(ctx context.Context, arg CreateCodeProblemLanguageDetailParams) (CodeProblemLanguageDetail, error) {
+	row := q.db.QueryRow(ctx, createCodeProblemLanguageDetail,
+		arg.CodeProblemID,
+		arg.LanguageID,
+		arg.SolutionStub,
+		arg.DriverCode,
+		arg.TimeConstraintMs,
+		arg.SpaceConstraintMb,
+	)
+	var i CodeProblemLanguageDetail
+	err := row.Scan(
+		&i.CodeProblemID,
+		&i.LanguageID,
+		&i.SolutionStub,
+		&i.DriverCode,
+		&i.TimeConstraintMs,
+		&i.SpaceConstraintMb,
+	)
+	return i, err
+}
+
+const createCodeProblemTag = `-- name: CreateCodeProblemTag :exec
+INSERT INTO code_problem_tags (code_problem_id, tag_id)
+VALUES ($1, $2)
+`
+
+type CreateCodeProblemTagParams struct {
+	CodeProblemID pgtype.UUID
+	TagID         pgtype.UUID
+}
+
+// Code Problem Tags
+func (q *Queries) CreateCodeProblemTag(ctx context.Context, arg CreateCodeProblemTagParams) error {
+	_, err := q.db.Exec(ctx, createCodeProblemTag, arg.CodeProblemID, arg.TagID)
+	return err
+}
+
 const createEvent = `-- name: CreateEvent :one
 INSERT INTO events (title, description, type, started_date, end_date)
 VALUES ($1, $2, $3, $4, $5)
@@ -46,13 +125,493 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event
 	return i, err
 }
 
-const getEvents = `-- name: GetEvents :many
+const createEventCodeProblem = `-- name: CreateEventCodeProblem :exec
+INSERT INTO event_code_problems (event_id, code_problem_id, score)
+VALUES ($1, $2, $3)
+`
+
+type CreateEventCodeProblemParams struct {
+	EventID       pgtype.UUID
+	CodeProblemID pgtype.UUID
+	Score         int32
+}
+
+// Event Code Problems
+func (q *Queries) CreateEventCodeProblem(ctx context.Context, arg CreateEventCodeProblemParams) error {
+	_, err := q.db.Exec(ctx, createEventCodeProblem, arg.EventID, arg.CodeProblemID, arg.Score)
+	return err
+}
+
+const createEventGuildParticipant = `-- name: CreateEventGuildParticipant :one
+INSERT INTO event_guild_participants (event_id, guild_id, room_id)
+VALUES ($1, $2, $3)
+RETURNING event_id, guild_id, joined_at, room_id
+`
+
+type CreateEventGuildParticipantParams struct {
+	EventID pgtype.UUID
+	GuildID pgtype.UUID
+	RoomID  pgtype.UUID
+}
+
+// Event Guild Participants
+func (q *Queries) CreateEventGuildParticipant(ctx context.Context, arg CreateEventGuildParticipantParams) (EventGuildParticipant, error) {
+	row := q.db.QueryRow(ctx, createEventGuildParticipant, arg.EventID, arg.GuildID, arg.RoomID)
+	var i EventGuildParticipant
+	err := row.Scan(
+		&i.EventID,
+		&i.GuildID,
+		&i.JoinedAt,
+		&i.RoomID,
+	)
+	return i, err
+}
+
+const createGuildLeaderboardEntry = `-- name: CreateGuildLeaderboardEntry :one
+INSERT INTO guild_leaderboard_entries (guild_id, event_id, rank, total_score)
+VALUES ($1, $2, $3, $4)
+RETURNING id, guild_id, event_id, rank, total_score, snapshot_date
+`
+
+type CreateGuildLeaderboardEntryParams struct {
+	GuildID    pgtype.UUID
+	EventID    pgtype.UUID
+	Rank       int32
+	TotalScore int32
+}
+
+// Guild Leaderboard Entries
+func (q *Queries) CreateGuildLeaderboardEntry(ctx context.Context, arg CreateGuildLeaderboardEntryParams) (GuildLeaderboardEntry, error) {
+	row := q.db.QueryRow(ctx, createGuildLeaderboardEntry,
+		arg.GuildID,
+		arg.EventID,
+		arg.Rank,
+		arg.TotalScore,
+	)
+	var i GuildLeaderboardEntry
+	err := row.Scan(
+		&i.ID,
+		&i.GuildID,
+		&i.EventID,
+		&i.Rank,
+		&i.TotalScore,
+		&i.SnapshotDate,
+	)
+	return i, err
+}
+
+const createLanguage = `-- name: CreateLanguage :one
+INSERT INTO languages (name, compile_cmd, run_cmd)
+VALUES ($1, $2, $3)
+RETURNING id, name, compile_cmd, run_cmd
+`
+
+type CreateLanguageParams struct {
+	Name       string
+	CompileCmd string
+	RunCmd     string
+}
+
+// Languages
+func (q *Queries) CreateLanguage(ctx context.Context, arg CreateLanguageParams) (Language, error) {
+	row := q.db.QueryRow(ctx, createLanguage, arg.Name, arg.CompileCmd, arg.RunCmd)
+	var i Language
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CompileCmd,
+		&i.RunCmd,
+	)
+	return i, err
+}
+
+const createLeaderboardEntry = `-- name: CreateLeaderboardEntry :one
+INSERT INTO leaderboard_entries (user_id, event_id, rank, score)
+VALUES ($1, $2, $3, $4)
+RETURNING id, user_id, event_id, rank, score, snapshot_date
+`
+
+type CreateLeaderboardEntryParams struct {
+	UserID  pgtype.UUID
+	EventID pgtype.UUID
+	Rank    int32
+	Score   int32
+}
+
+// Leaderboard Entries
+func (q *Queries) CreateLeaderboardEntry(ctx context.Context, arg CreateLeaderboardEntryParams) (LeaderboardEntry, error) {
+	row := q.db.QueryRow(ctx, createLeaderboardEntry,
+		arg.UserID,
+		arg.EventID,
+		arg.Rank,
+		arg.Score,
+	)
+	var i LeaderboardEntry
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EventID,
+		&i.Rank,
+		&i.Score,
+		&i.SnapshotDate,
+	)
+	return i, err
+}
+
+const createRoom = `-- name: CreateRoom :one
+INSERT INTO rooms (event_id, name, description)
+VALUES ($1, $2, $3)
+RETURNING id, event_id, name, description, created_date
+`
+
+type CreateRoomParams struct {
+	EventID     pgtype.UUID
+	Name        string
+	Description string
+}
+
+// Rooms
+func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, error) {
+	row := q.db.QueryRow(ctx, createRoom, arg.EventID, arg.Name, arg.Description)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.Name,
+		&i.Description,
+		&i.CreatedDate,
+	)
+	return i, err
+}
+
+const createRoomPlayer = `-- name: CreateRoomPlayer :one
+INSERT INTO room_players (room_id, user_id, score, place, state)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING room_id, user_id, score, place, state, disconnected_at
+`
+
+type CreateRoomPlayerParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+	Score  int32
+	Place  pgtype.Int4
+	State  pgtype.Text
+}
+
+// Room Players
+func (q *Queries) CreateRoomPlayer(ctx context.Context, arg CreateRoomPlayerParams) (RoomPlayer, error) {
+	row := q.db.QueryRow(ctx, createRoomPlayer,
+		arg.RoomID,
+		arg.UserID,
+		arg.Score,
+		arg.Place,
+		arg.State,
+	)
+	var i RoomPlayer
+	err := row.Scan(
+		&i.RoomID,
+		&i.UserID,
+		&i.Score,
+		&i.Place,
+		&i.State,
+		&i.DisconnectedAt,
+	)
+	return i, err
+}
+
+const createSubmission = `-- name: CreateSubmission :one
+INSERT INTO submissions (user_id, code_problem_id, language_id, room_id, code_submitted, status, execution_time_ms, submitted_guild_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, user_id, code_problem_id, language_id, room_id, code_submitted, status, execution_time_ms, submitted_at, submitted_guild_id
+`
+
+type CreateSubmissionParams struct {
+	UserID           pgtype.UUID
+	CodeProblemID    pgtype.UUID
+	LanguageID       pgtype.UUID
+	RoomID           pgtype.UUID
+	CodeSubmitted    string
+	Status           string
+	ExecutionTimeMs  pgtype.Int4
+	SubmittedGuildID pgtype.UUID
+}
+
+// Submissions
+func (q *Queries) CreateSubmission(ctx context.Context, arg CreateSubmissionParams) (Submission, error) {
+	row := q.db.QueryRow(ctx, createSubmission,
+		arg.UserID,
+		arg.CodeProblemID,
+		arg.LanguageID,
+		arg.RoomID,
+		arg.CodeSubmitted,
+		arg.Status,
+		arg.ExecutionTimeMs,
+		arg.SubmittedGuildID,
+	)
+	var i Submission
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CodeProblemID,
+		&i.LanguageID,
+		&i.RoomID,
+		&i.CodeSubmitted,
+		&i.Status,
+		&i.ExecutionTimeMs,
+		&i.SubmittedAt,
+		&i.SubmittedGuildID,
+	)
+	return i, err
+}
+
+const createTag = `-- name: CreateTag :one
+INSERT INTO tags (name)
+VALUES ($1)
+RETURNING id, name, created_at
+`
+
+// Tags
+func (q *Queries) CreateTag(ctx context.Context, name string) (Tag, error) {
+	row := q.db.QueryRow(ctx, createTag, name)
+	var i Tag
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
+const createTestCase = `-- name: CreateTestCase :one
+INSERT INTO test_cases (code_problem_id, input, expected_output, is_hidden)
+VALUES ($1, $2, $3, $4)
+RETURNING id, code_problem_id, input, expected_output, is_hidden
+`
+
+type CreateTestCaseParams struct {
+	CodeProblemID  pgtype.UUID
+	Input          []byte
+	ExpectedOutput []byte
+	IsHidden       bool
+}
+
+// Test Cases
+func (q *Queries) CreateTestCase(ctx context.Context, arg CreateTestCaseParams) (TestCase, error) {
+	row := q.db.QueryRow(ctx, createTestCase,
+		arg.CodeProblemID,
+		arg.Input,
+		arg.ExpectedOutput,
+		arg.IsHidden,
+	)
+	var i TestCase
+	err := row.Scan(
+		&i.ID,
+		&i.CodeProblemID,
+		&i.Input,
+		&i.ExpectedOutput,
+		&i.IsHidden,
+	)
+	return i, err
+}
+
+const deleteCodeProblem = `-- name: DeleteCodeProblem :exec
+DELETE FROM code_problems WHERE id = $1
+`
+
+func (q *Queries) DeleteCodeProblem(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteCodeProblem, id)
+	return err
+}
+
+const deleteCodeProblemLanguageDetail = `-- name: DeleteCodeProblemLanguageDetail :exec
+DELETE FROM code_problem_language_details
+WHERE code_problem_id = $1 AND language_id = $2
+`
+
+type DeleteCodeProblemLanguageDetailParams struct {
+	CodeProblemID pgtype.UUID
+	LanguageID    pgtype.UUID
+}
+
+func (q *Queries) DeleteCodeProblemLanguageDetail(ctx context.Context, arg DeleteCodeProblemLanguageDetailParams) error {
+	_, err := q.db.Exec(ctx, deleteCodeProblemLanguageDetail, arg.CodeProblemID, arg.LanguageID)
+	return err
+}
+
+const deleteCodeProblemTag = `-- name: DeleteCodeProblemTag :exec
+DELETE FROM code_problem_tags
+WHERE code_problem_id = $1 AND tag_id = $2
+`
+
+type DeleteCodeProblemTagParams struct {
+	CodeProblemID pgtype.UUID
+	TagID         pgtype.UUID
+}
+
+func (q *Queries) DeleteCodeProblemTag(ctx context.Context, arg DeleteCodeProblemTagParams) error {
+	_, err := q.db.Exec(ctx, deleteCodeProblemTag, arg.CodeProblemID, arg.TagID)
+	return err
+}
+
+const deleteEvent = `-- name: DeleteEvent :exec
+DELETE FROM events WHERE id = $1
+`
+
+func (q *Queries) DeleteEvent(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteEvent, id)
+	return err
+}
+
+const deleteEventCodeProblem = `-- name: DeleteEventCodeProblem :exec
+DELETE FROM event_code_problems
+WHERE event_id = $1 AND code_problem_id = $2
+`
+
+type DeleteEventCodeProblemParams struct {
+	EventID       pgtype.UUID
+	CodeProblemID pgtype.UUID
+}
+
+func (q *Queries) DeleteEventCodeProblem(ctx context.Context, arg DeleteEventCodeProblemParams) error {
+	_, err := q.db.Exec(ctx, deleteEventCodeProblem, arg.EventID, arg.CodeProblemID)
+	return err
+}
+
+const deleteEventGuildParticipant = `-- name: DeleteEventGuildParticipant :exec
+DELETE FROM event_guild_participants
+WHERE event_id = $1 AND guild_id = $2
+`
+
+type DeleteEventGuildParticipantParams struct {
+	EventID pgtype.UUID
+	GuildID pgtype.UUID
+}
+
+func (q *Queries) DeleteEventGuildParticipant(ctx context.Context, arg DeleteEventGuildParticipantParams) error {
+	_, err := q.db.Exec(ctx, deleteEventGuildParticipant, arg.EventID, arg.GuildID)
+	return err
+}
+
+const deleteGuildLeaderboardEntry = `-- name: DeleteGuildLeaderboardEntry :exec
+DELETE FROM guild_leaderboard_entries
+WHERE guild_id = $1 AND event_id = $2
+`
+
+type DeleteGuildLeaderboardEntryParams struct {
+	GuildID pgtype.UUID
+	EventID pgtype.UUID
+}
+
+func (q *Queries) DeleteGuildLeaderboardEntry(ctx context.Context, arg DeleteGuildLeaderboardEntryParams) error {
+	_, err := q.db.Exec(ctx, deleteGuildLeaderboardEntry, arg.GuildID, arg.EventID)
+	return err
+}
+
+const deleteLanguage = `-- name: DeleteLanguage :exec
+DELETE FROM languages WHERE id = $1
+`
+
+func (q *Queries) DeleteLanguage(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteLanguage, id)
+	return err
+}
+
+const deleteLeaderboardEntry = `-- name: DeleteLeaderboardEntry :exec
+DELETE FROM leaderboard_entries
+WHERE user_id = $1 AND event_id = $2
+`
+
+type DeleteLeaderboardEntryParams struct {
+	UserID  pgtype.UUID
+	EventID pgtype.UUID
+}
+
+func (q *Queries) DeleteLeaderboardEntry(ctx context.Context, arg DeleteLeaderboardEntryParams) error {
+	_, err := q.db.Exec(ctx, deleteLeaderboardEntry, arg.UserID, arg.EventID)
+	return err
+}
+
+const deleteRoom = `-- name: DeleteRoom :exec
+DELETE FROM rooms WHERE id = $1
+`
+
+func (q *Queries) DeleteRoom(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRoom, id)
+	return err
+}
+
+const deleteRoomPlayer = `-- name: DeleteRoomPlayer :exec
+DELETE FROM room_players
+WHERE room_id = $1 AND user_id = $2
+`
+
+type DeleteRoomPlayerParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+func (q *Queries) DeleteRoomPlayer(ctx context.Context, arg DeleteRoomPlayerParams) error {
+	_, err := q.db.Exec(ctx, deleteRoomPlayer, arg.RoomID, arg.UserID)
+	return err
+}
+
+const deleteSubmission = `-- name: DeleteSubmission :exec
+DELETE FROM submissions WHERE id = $1
+`
+
+func (q *Queries) DeleteSubmission(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSubmission, id)
+	return err
+}
+
+const deleteTag = `-- name: DeleteTag :exec
+DELETE FROM tags WHERE id = $1
+`
+
+func (q *Queries) DeleteTag(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTag, id)
+	return err
+}
+
+const deleteTestCase = `-- name: DeleteTestCase :exec
+DELETE FROM test_cases WHERE id = $1
+`
+
+func (q *Queries) DeleteTestCase(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTestCase, id)
+	return err
+}
+
+const disconnectRoomPlayer = `-- name: DisconnectRoomPlayer :one
+UPDATE room_players
+SET disconnected_at = NOW()
+WHERE room_id = $1 AND user_id = $2
+RETURNING room_id, user_id, score, place, state, disconnected_at
+`
+
+type DisconnectRoomPlayerParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+func (q *Queries) DisconnectRoomPlayer(ctx context.Context, arg DisconnectRoomPlayerParams) (RoomPlayer, error) {
+	row := q.db.QueryRow(ctx, disconnectRoomPlayer, arg.RoomID, arg.UserID)
+	var i RoomPlayer
+	err := row.Scan(
+		&i.RoomID,
+		&i.UserID,
+		&i.Score,
+		&i.Place,
+		&i.State,
+		&i.DisconnectedAt,
+	)
+	return i, err
+}
+
+const getActiveEvents = `-- name: GetActiveEvents :many
 SELECT id, title, description, type, started_date, end_date FROM events
+WHERE started_date <= NOW() AND end_date >= NOW()
 ORDER BY started_date ASC
 `
 
-func (q *Queries) GetEvents(ctx context.Context) ([]Event, error) {
-	rows, err := q.db.Query(ctx, getEvents)
+func (q *Queries) GetActiveEvents(ctx context.Context) ([]Event, error) {
+	rows, err := q.db.Query(ctx, getActiveEvents)
 	if err != nil {
 		return nil, err
 	}
@@ -76,4 +635,2051 @@ func (q *Queries) GetEvents(ctx context.Context) ([]Event, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const getCodeProblemByID = `-- name: GetCodeProblemByID :one
+SELECT id, title, problem_statement, difficulty, created_at FROM code_problems WHERE id = $1
+`
+
+func (q *Queries) GetCodeProblemByID(ctx context.Context, id pgtype.UUID) (CodeProblem, error) {
+	row := q.db.QueryRow(ctx, getCodeProblemByID, id)
+	var i CodeProblem
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.ProblemStatement,
+		&i.Difficulty,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getCodeProblemLanguageDetail = `-- name: GetCodeProblemLanguageDetail :one
+SELECT code_problem_id, language_id, solution_stub, driver_code, time_constraint_ms, space_constraint_mb FROM code_problem_language_details
+WHERE code_problem_id = $1 AND language_id = $2
+`
+
+type GetCodeProblemLanguageDetailParams struct {
+	CodeProblemID pgtype.UUID
+	LanguageID    pgtype.UUID
+}
+
+func (q *Queries) GetCodeProblemLanguageDetail(ctx context.Context, arg GetCodeProblemLanguageDetailParams) (CodeProblemLanguageDetail, error) {
+	row := q.db.QueryRow(ctx, getCodeProblemLanguageDetail, arg.CodeProblemID, arg.LanguageID)
+	var i CodeProblemLanguageDetail
+	err := row.Scan(
+		&i.CodeProblemID,
+		&i.LanguageID,
+		&i.SolutionStub,
+		&i.DriverCode,
+		&i.TimeConstraintMs,
+		&i.SpaceConstraintMb,
+	)
+	return i, err
+}
+
+const getCodeProblemLanguageDetails = `-- name: GetCodeProblemLanguageDetails :many
+SELECT code_problem_id, language_id, solution_stub, driver_code, time_constraint_ms, space_constraint_mb FROM code_problem_language_details
+WHERE code_problem_id = $1
+LIMIT $2
+OFFSET $3
+`
+
+type GetCodeProblemLanguageDetailsParams struct {
+	CodeProblemID pgtype.UUID
+	Limit         int32
+	Offset        int32
+}
+
+func (q *Queries) GetCodeProblemLanguageDetails(ctx context.Context, arg GetCodeProblemLanguageDetailsParams) ([]CodeProblemLanguageDetail, error) {
+	rows, err := q.db.Query(ctx, getCodeProblemLanguageDetails, arg.CodeProblemID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CodeProblemLanguageDetail
+	for rows.Next() {
+		var i CodeProblemLanguageDetail
+		if err := rows.Scan(
+			&i.CodeProblemID,
+			&i.LanguageID,
+			&i.SolutionStub,
+			&i.DriverCode,
+			&i.TimeConstraintMs,
+			&i.SpaceConstraintMb,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCodeProblemTags = `-- name: GetCodeProblemTags :many
+SELECT cpt.code_problem_id, cpt.tag_id, t.name as tag_name
+FROM code_problem_tags cpt
+JOIN tags t ON cpt.tag_id = t.id
+WHERE cpt.code_problem_id = $1
+`
+
+type GetCodeProblemTagsRow struct {
+	CodeProblemID pgtype.UUID
+	TagID         pgtype.UUID
+	TagName       string
+}
+
+func (q *Queries) GetCodeProblemTags(ctx context.Context, codeProblemID pgtype.UUID) ([]GetCodeProblemTagsRow, error) {
+	rows, err := q.db.Query(ctx, getCodeProblemTags, codeProblemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCodeProblemTagsRow
+	for rows.Next() {
+		var i GetCodeProblemTagsRow
+		if err := rows.Scan(&i.CodeProblemID, &i.TagID, &i.TagName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCodeProblems = `-- name: GetCodeProblems :many
+SELECT id, title, problem_statement, difficulty, created_at FROM code_problems
+ORDER BY created_at DESC
+LIMIT $1
+OFFSET $2
+`
+
+type GetCodeProblemsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetCodeProblems(ctx context.Context, arg GetCodeProblemsParams) ([]CodeProblem, error) {
+	rows, err := q.db.Query(ctx, getCodeProblems, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CodeProblem
+	for rows.Next() {
+		var i CodeProblem
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ProblemStatement,
+			&i.Difficulty,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCodeProblemsByDifficulty = `-- name: GetCodeProblemsByDifficulty :many
+SELECT id, title, problem_statement, difficulty, created_at FROM code_problems
+WHERE difficulty = $1
+ORDER BY created_at DESC
+LIMIT $2
+OFFSET $3
+`
+
+type GetCodeProblemsByDifficultyParams struct {
+	Difficulty int32
+	Limit      int32
+	Offset     int32
+}
+
+func (q *Queries) GetCodeProblemsByDifficulty(ctx context.Context, arg GetCodeProblemsByDifficultyParams) ([]CodeProblem, error) {
+	rows, err := q.db.Query(ctx, getCodeProblemsByDifficulty, arg.Difficulty, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CodeProblem
+	for rows.Next() {
+		var i CodeProblem
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ProblemStatement,
+			&i.Difficulty,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCodeProblemsByTag = `-- name: GetCodeProblemsByTag :many
+SELECT cp.id, cp.title, cp.problem_statement, cp.difficulty, cp.created_at, t.name as tag_name
+FROM code_problems cp
+JOIN code_problem_tags cpt ON cp.id = cpt.code_problem_id
+JOIN tags t ON cpt.tag_id = t.id
+WHERE t.id = $1
+ORDER BY cp.created_at DESC
+`
+
+type GetCodeProblemsByTagRow struct {
+	ID               pgtype.UUID
+	Title            string
+	ProblemStatement string
+	Difficulty       int32
+	CreatedAt        pgtype.Timestamptz
+	TagName          string
+}
+
+func (q *Queries) GetCodeProblemsByTag(ctx context.Context, id pgtype.UUID) ([]GetCodeProblemsByTagRow, error) {
+	rows, err := q.db.Query(ctx, getCodeProblemsByTag, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCodeProblemsByTagRow
+	for rows.Next() {
+		var i GetCodeProblemsByTagRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ProblemStatement,
+			&i.Difficulty,
+			&i.CreatedAt,
+			&i.TagName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEventByID = `-- name: GetEventByID :one
+SELECT id, title, description, type, started_date, end_date FROM events WHERE id = $1
+`
+
+func (q *Queries) GetEventByID(ctx context.Context, id pgtype.UUID) (Event, error) {
+	row := q.db.QueryRow(ctx, getEventByID, id)
+	var i Event
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.Type,
+		&i.StartedDate,
+		&i.EndDate,
+	)
+	return i, err
+}
+
+const getEventCodeProblem = `-- name: GetEventCodeProblem :one
+SELECT ecp.event_id, ecp.code_problem_id, ecp.score, cp.title, cp.difficulty
+FROM event_code_problems ecp
+JOIN code_problems cp ON ecp.code_problem_id = cp.id
+WHERE ecp.event_id = $1 AND ecp.code_problem_id = $2
+`
+
+type GetEventCodeProblemParams struct {
+	EventID       pgtype.UUID
+	CodeProblemID pgtype.UUID
+}
+
+type GetEventCodeProblemRow struct {
+	EventID       pgtype.UUID
+	CodeProblemID pgtype.UUID
+	Score         int32
+	Title         string
+	Difficulty    int32
+}
+
+func (q *Queries) GetEventCodeProblem(ctx context.Context, arg GetEventCodeProblemParams) (GetEventCodeProblemRow, error) {
+	row := q.db.QueryRow(ctx, getEventCodeProblem, arg.EventID, arg.CodeProblemID)
+	var i GetEventCodeProblemRow
+	err := row.Scan(
+		&i.EventID,
+		&i.CodeProblemID,
+		&i.Score,
+		&i.Title,
+		&i.Difficulty,
+	)
+	return i, err
+}
+
+const getEventCodeProblems = `-- name: GetEventCodeProblems :many
+SELECT ecp.event_id, ecp.code_problem_id, ecp.score, cp.title, cp.difficulty
+FROM event_code_problems ecp
+JOIN code_problems cp ON ecp.code_problem_id = cp.id
+WHERE ecp.event_id = $1
+ORDER BY ecp.score DESC
+`
+
+type GetEventCodeProblemsRow struct {
+	EventID       pgtype.UUID
+	CodeProblemID pgtype.UUID
+	Score         int32
+	Title         string
+	Difficulty    int32
+}
+
+func (q *Queries) GetEventCodeProblems(ctx context.Context, eventID pgtype.UUID) ([]GetEventCodeProblemsRow, error) {
+	rows, err := q.db.Query(ctx, getEventCodeProblems, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEventCodeProblemsRow
+	for rows.Next() {
+		var i GetEventCodeProblemsRow
+		if err := rows.Scan(
+			&i.EventID,
+			&i.CodeProblemID,
+			&i.Score,
+			&i.Title,
+			&i.Difficulty,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEventGuildParticipant = `-- name: GetEventGuildParticipant :one
+SELECT event_id, guild_id, joined_at, room_id FROM event_guild_participants
+WHERE event_id = $1 AND guild_id = $2
+`
+
+type GetEventGuildParticipantParams struct {
+	EventID pgtype.UUID
+	GuildID pgtype.UUID
+}
+
+func (q *Queries) GetEventGuildParticipant(ctx context.Context, arg GetEventGuildParticipantParams) (EventGuildParticipant, error) {
+	row := q.db.QueryRow(ctx, getEventGuildParticipant, arg.EventID, arg.GuildID)
+	var i EventGuildParticipant
+	err := row.Scan(
+		&i.EventID,
+		&i.GuildID,
+		&i.JoinedAt,
+		&i.RoomID,
+	)
+	return i, err
+}
+
+const getEventGuildParticipants = `-- name: GetEventGuildParticipants :many
+SELECT event_id, guild_id, joined_at, room_id FROM event_guild_participants
+WHERE event_id = $1
+ORDER BY joined_at ASC
+`
+
+func (q *Queries) GetEventGuildParticipants(ctx context.Context, eventID pgtype.UUID) ([]EventGuildParticipant, error) {
+	rows, err := q.db.Query(ctx, getEventGuildParticipants, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EventGuildParticipant
+	for rows.Next() {
+		var i EventGuildParticipant
+		if err := rows.Scan(
+			&i.EventID,
+			&i.GuildID,
+			&i.JoinedAt,
+			&i.RoomID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEventWithProblemsAndLanguages = `-- name: GetEventWithProblemsAndLanguages :many
+SELECT
+    e.id, e.title, e.description, e.type, e.started_date, e.end_date,
+    cp.id as problem_id,
+    cp.title as problem_title,
+    cp.difficulty as problem_difficulty,
+    ecp.score as problem_score
+FROM events e
+LEFT JOIN event_code_problems ecp ON e.id = ecp.event_id
+LEFT JOIN code_problems cp ON ecp.code_problem_id = cp.id
+WHERE e.id = $1
+ORDER BY ecp.score DESC
+`
+
+type GetEventWithProblemsAndLanguagesRow struct {
+	ID                pgtype.UUID
+	Title             string
+	Description       string
+	Type              EventType
+	StartedDate       pgtype.Timestamptz
+	EndDate           pgtype.Timestamptz
+	ProblemID         pgtype.UUID
+	ProblemTitle      pgtype.Text
+	ProblemDifficulty pgtype.Int4
+	ProblemScore      pgtype.Int4
+}
+
+// Complex Queries
+func (q *Queries) GetEventWithProblemsAndLanguages(ctx context.Context, id pgtype.UUID) ([]GetEventWithProblemsAndLanguagesRow, error) {
+	rows, err := q.db.Query(ctx, getEventWithProblemsAndLanguages, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEventWithProblemsAndLanguagesRow
+	for rows.Next() {
+		var i GetEventWithProblemsAndLanguagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Type,
+			&i.StartedDate,
+			&i.EndDate,
+			&i.ProblemID,
+			&i.ProblemTitle,
+			&i.ProblemDifficulty,
+			&i.ProblemScore,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEvents = `-- name: GetEvents :many
+SELECT id, title, description, type, started_date, end_date FROM events
+ORDER BY started_date ASC
+LIMIT $1
+OFFSET $2
+`
+
+type GetEventsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetEvents(ctx context.Context, arg GetEventsParams) ([]Event, error) {
+	rows, err := q.db.Query(ctx, getEvents, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Event
+	for rows.Next() {
+		var i Event
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Type,
+			&i.StartedDate,
+			&i.EndDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEventsByType = `-- name: GetEventsByType :many
+SELECT id, title, description, type, started_date, end_date FROM events
+WHERE type = $1
+ORDER BY started_date ASC
+`
+
+func (q *Queries) GetEventsByType(ctx context.Context, type_ EventType) ([]Event, error) {
+	rows, err := q.db.Query(ctx, getEventsByType, type_)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Event
+	for rows.Next() {
+		var i Event
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Type,
+			&i.StartedDate,
+			&i.EndDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getGuildLeaderboardByEvent = `-- name: GetGuildLeaderboardByEvent :many
+SELECT id, guild_id, event_id, rank, total_score, snapshot_date FROM guild_leaderboard_entries
+WHERE event_id = $1
+ORDER BY rank ASC
+`
+
+func (q *Queries) GetGuildLeaderboardByEvent(ctx context.Context, eventID pgtype.UUID) ([]GuildLeaderboardEntry, error) {
+	rows, err := q.db.Query(ctx, getGuildLeaderboardByEvent, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GuildLeaderboardEntry
+	for rows.Next() {
+		var i GuildLeaderboardEntry
+		if err := rows.Scan(
+			&i.ID,
+			&i.GuildID,
+			&i.EventID,
+			&i.Rank,
+			&i.TotalScore,
+			&i.SnapshotDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getGuildLeaderboardByGuild = `-- name: GetGuildLeaderboardByGuild :many
+SELECT gle.id, gle.guild_id, gle.event_id, gle.rank, gle.total_score, gle.snapshot_date, e.title as event_title
+FROM guild_leaderboard_entries gle
+JOIN events e ON gle.event_id = e.id
+WHERE gle.guild_id = $1
+ORDER BY gle.snapshot_date DESC
+`
+
+type GetGuildLeaderboardByGuildRow struct {
+	ID           pgtype.UUID
+	GuildID      pgtype.UUID
+	EventID      pgtype.UUID
+	Rank         int32
+	TotalScore   int32
+	SnapshotDate pgtype.Timestamptz
+	EventTitle   string
+}
+
+func (q *Queries) GetGuildLeaderboardByGuild(ctx context.Context, guildID pgtype.UUID) ([]GetGuildLeaderboardByGuildRow, error) {
+	rows, err := q.db.Query(ctx, getGuildLeaderboardByGuild, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetGuildLeaderboardByGuildRow
+	for rows.Next() {
+		var i GetGuildLeaderboardByGuildRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GuildID,
+			&i.EventID,
+			&i.Rank,
+			&i.TotalScore,
+			&i.SnapshotDate,
+			&i.EventTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getGuildParticipantsByGuild = `-- name: GetGuildParticipantsByGuild :many
+SELECT event_id, guild_id, joined_at, room_id FROM event_guild_participants
+WHERE guild_id = $1
+ORDER BY joined_at DESC
+`
+
+func (q *Queries) GetGuildParticipantsByGuild(ctx context.Context, guildID pgtype.UUID) ([]EventGuildParticipant, error) {
+	rows, err := q.db.Query(ctx, getGuildParticipantsByGuild, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EventGuildParticipant
+	for rows.Next() {
+		var i EventGuildParticipant
+		if err := rows.Scan(
+			&i.EventID,
+			&i.GuildID,
+			&i.JoinedAt,
+			&i.RoomID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLanguageByID = `-- name: GetLanguageByID :one
+SELECT id, name, compile_cmd, run_cmd FROM languages WHERE id = $1
+`
+
+func (q *Queries) GetLanguageByID(ctx context.Context, id pgtype.UUID) (Language, error) {
+	row := q.db.QueryRow(ctx, getLanguageByID, id)
+	var i Language
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CompileCmd,
+		&i.RunCmd,
+	)
+	return i, err
+}
+
+const getLanguageByName = `-- name: GetLanguageByName :one
+SELECT id, name, compile_cmd, run_cmd FROM languages WHERE name = $1
+`
+
+func (q *Queries) GetLanguageByName(ctx context.Context, name string) (Language, error) {
+	row := q.db.QueryRow(ctx, getLanguageByName, name)
+	var i Language
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CompileCmd,
+		&i.RunCmd,
+	)
+	return i, err
+}
+
+const getLanguageDetailsForProblem = `-- name: GetLanguageDetailsForProblem :many
+SELECT cpld.code_problem_id, cpld.language_id, cpld.solution_stub, cpld.driver_code, cpld.time_constraint_ms, cpld.space_constraint_mb, l.name as language_name
+FROM code_problem_language_details cpld
+JOIN languages l ON cpld.language_id = l.id
+WHERE cpld.code_problem_id = $1
+`
+
+type GetLanguageDetailsForProblemRow struct {
+	CodeProblemID     pgtype.UUID
+	LanguageID        pgtype.UUID
+	SolutionStub      string
+	DriverCode        string
+	TimeConstraintMs  int32
+	SpaceConstraintMb int32
+	LanguageName      string
+}
+
+func (q *Queries) GetLanguageDetailsForProblem(ctx context.Context, codeProblemID pgtype.UUID) ([]GetLanguageDetailsForProblemRow, error) {
+	rows, err := q.db.Query(ctx, getLanguageDetailsForProblem, codeProblemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLanguageDetailsForProblemRow
+	for rows.Next() {
+		var i GetLanguageDetailsForProblemRow
+		if err := rows.Scan(
+			&i.CodeProblemID,
+			&i.LanguageID,
+			&i.SolutionStub,
+			&i.DriverCode,
+			&i.TimeConstraintMs,
+			&i.SpaceConstraintMb,
+			&i.LanguageName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLanguages = `-- name: GetLanguages :many
+SELECT id, name, compile_cmd, run_cmd
+FROM languages
+ORDER BY name
+LIMIT $1
+OFFSET $2
+`
+
+type GetLanguagesParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetLanguages(ctx context.Context, arg GetLanguagesParams) ([]Language, error) {
+	rows, err := q.db.Query(ctx, getLanguages, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Language
+	for rows.Next() {
+		var i Language
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CompileCmd,
+			&i.RunCmd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLatestGuildLeaderboardByEvent = `-- name: GetLatestGuildLeaderboardByEvent :many
+SELECT id, guild_id, event_id, rank, total_score, snapshot_date FROM guild_leaderboard_entries gle1
+WHERE gle1.event_id = $1
+AND gle1.snapshot_date = (
+    SELECT MAX(gle2.snapshot_date)
+    FROM guild_leaderboard_entries gle2
+    WHERE gle2.event_id = $1
+)
+ORDER BY gle1.rank ASC
+`
+
+func (q *Queries) GetLatestGuildLeaderboardByEvent(ctx context.Context, eventID pgtype.UUID) ([]GuildLeaderboardEntry, error) {
+	rows, err := q.db.Query(ctx, getLatestGuildLeaderboardByEvent, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GuildLeaderboardEntry
+	for rows.Next() {
+		var i GuildLeaderboardEntry
+		if err := rows.Scan(
+			&i.ID,
+			&i.GuildID,
+			&i.EventID,
+			&i.Rank,
+			&i.TotalScore,
+			&i.SnapshotDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLatestLeaderboardByEvent = `-- name: GetLatestLeaderboardByEvent :many
+SELECT id, user_id, event_id, rank, score, snapshot_date FROM leaderboard_entries le1
+WHERE le1.event_id = $1
+AND le1.snapshot_date = (
+    SELECT MAX(le2.snapshot_date)
+    FROM leaderboard_entries le2
+    WHERE le2.event_id = $1
+)
+ORDER BY le1.rank ASC
+`
+
+func (q *Queries) GetLatestLeaderboardByEvent(ctx context.Context, eventID pgtype.UUID) ([]LeaderboardEntry, error) {
+	rows, err := q.db.Query(ctx, getLatestLeaderboardByEvent, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LeaderboardEntry
+	for rows.Next() {
+		var i LeaderboardEntry
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.EventID,
+			&i.Rank,
+			&i.Score,
+			&i.SnapshotDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLeaderboardByEvent = `-- name: GetLeaderboardByEvent :many
+SELECT id, user_id, event_id, rank, score, snapshot_date FROM leaderboard_entries
+WHERE event_id = $1
+ORDER BY rank ASC
+`
+
+func (q *Queries) GetLeaderboardByEvent(ctx context.Context, eventID pgtype.UUID) ([]LeaderboardEntry, error) {
+	rows, err := q.db.Query(ctx, getLeaderboardByEvent, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LeaderboardEntry
+	for rows.Next() {
+		var i LeaderboardEntry
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.EventID,
+			&i.Rank,
+			&i.Score,
+			&i.SnapshotDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLeaderboardByUser = `-- name: GetLeaderboardByUser :many
+SELECT le.id, le.user_id, le.event_id, le.rank, le.score, le.snapshot_date, e.title as event_title
+FROM leaderboard_entries le
+JOIN events e ON le.event_id = e.id
+WHERE le.user_id = $1
+ORDER BY le.snapshot_date DESC
+`
+
+type GetLeaderboardByUserRow struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	EventID      pgtype.UUID
+	Rank         int32
+	Score        int32
+	SnapshotDate pgtype.Timestamptz
+	EventTitle   string
+}
+
+func (q *Queries) GetLeaderboardByUser(ctx context.Context, userID pgtype.UUID) ([]GetLeaderboardByUserRow, error) {
+	rows, err := q.db.Query(ctx, getLeaderboardByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLeaderboardByUserRow
+	for rows.Next() {
+		var i GetLeaderboardByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.EventID,
+			&i.Rank,
+			&i.Score,
+			&i.SnapshotDate,
+			&i.EventTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPlayersByUser = `-- name: GetPlayersByUser :many
+SELECT room_id, user_id, score, place, state, disconnected_at FROM room_players
+WHERE user_id = $1
+ORDER BY score DESC
+`
+
+func (q *Queries) GetPlayersByUser(ctx context.Context, userID pgtype.UUID) ([]RoomPlayer, error) {
+	rows, err := q.db.Query(ctx, getPlayersByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RoomPlayer
+	for rows.Next() {
+		var i RoomPlayer
+		if err := rows.Scan(
+			&i.RoomID,
+			&i.UserID,
+			&i.Score,
+			&i.Place,
+			&i.State,
+			&i.DisconnectedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProblemSubmissionStats = `-- name: GetProblemSubmissionStats :one
+SELECT
+    COUNT(*) as total_submissions,
+    COUNT(DISTINCT user_id) as unique_users,
+    COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted_count,
+    ROUND(COUNT(CASE WHEN status = 'accepted' THEN 1 END) * 100.0 / COUNT(*), 2) as acceptance_rate
+FROM submissions
+WHERE code_problem_id = $1
+`
+
+type GetProblemSubmissionStatsRow struct {
+	TotalSubmissions int64
+	UniqueUsers      int64
+	AcceptedCount    int64
+	AcceptanceRate   pgtype.Numeric
+}
+
+func (q *Queries) GetProblemSubmissionStats(ctx context.Context, codeProblemID pgtype.UUID) (GetProblemSubmissionStatsRow, error) {
+	row := q.db.QueryRow(ctx, getProblemSubmissionStats, codeProblemID)
+	var i GetProblemSubmissionStatsRow
+	err := row.Scan(
+		&i.TotalSubmissions,
+		&i.UniqueUsers,
+		&i.AcceptedCount,
+		&i.AcceptanceRate,
+	)
+	return i, err
+}
+
+const getPublicTestCasesByProblem = `-- name: GetPublicTestCasesByProblem :many
+SELECT id, code_problem_id, input, expected_output, is_hidden FROM test_cases
+WHERE code_problem_id = $1 AND is_hidden = false
+ORDER BY id
+`
+
+func (q *Queries) GetPublicTestCasesByProblem(ctx context.Context, codeProblemID pgtype.UUID) ([]TestCase, error) {
+	rows, err := q.db.Query(ctx, getPublicTestCasesByProblem, codeProblemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TestCase
+	for rows.Next() {
+		var i TestCase
+		if err := rows.Scan(
+			&i.ID,
+			&i.CodeProblemID,
+			&i.Input,
+			&i.ExpectedOutput,
+			&i.IsHidden,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRoomByID = `-- name: GetRoomByID :one
+SELECT id, event_id, name, description, created_date FROM rooms WHERE id = $1
+`
+
+func (q *Queries) GetRoomByID(ctx context.Context, id pgtype.UUID) (Room, error) {
+	row := q.db.QueryRow(ctx, getRoomByID, id)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.Name,
+		&i.Description,
+		&i.CreatedDate,
+	)
+	return i, err
+}
+
+const getRoomLeaderboard = `-- name: GetRoomLeaderboard :many
+SELECT
+    rp.room_id, rp.user_id, rp.score, rp.place, rp.state, rp.disconnected_at,
+    COUNT(s.id) as submission_count,
+    MAX(s.submitted_at) as last_submission
+FROM room_players rp
+LEFT JOIN submissions s ON rp.user_id = s.user_id AND s.room_id = rp.room_id
+WHERE rp.room_id = $1
+GROUP BY rp.room_id, rp.user_id, rp.score, rp.place, rp.state, rp.disconnected_at
+ORDER BY rp.score DESC, rp.place ASC
+`
+
+type GetRoomLeaderboardRow struct {
+	RoomID          pgtype.UUID
+	UserID          pgtype.UUID
+	Score           int32
+	Place           pgtype.Int4
+	State           pgtype.Text
+	DisconnectedAt  pgtype.Timestamptz
+	SubmissionCount int64
+	LastSubmission  interface{}
+}
+
+func (q *Queries) GetRoomLeaderboard(ctx context.Context, roomID pgtype.UUID) ([]GetRoomLeaderboardRow, error) {
+	rows, err := q.db.Query(ctx, getRoomLeaderboard, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRoomLeaderboardRow
+	for rows.Next() {
+		var i GetRoomLeaderboardRow
+		if err := rows.Scan(
+			&i.RoomID,
+			&i.UserID,
+			&i.Score,
+			&i.Place,
+			&i.State,
+			&i.DisconnectedAt,
+			&i.SubmissionCount,
+			&i.LastSubmission,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRoomPlayer = `-- name: GetRoomPlayer :one
+SELECT room_id, user_id, score, place, state, disconnected_at FROM room_players
+WHERE room_id = $1 AND user_id = $2
+`
+
+type GetRoomPlayerParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+func (q *Queries) GetRoomPlayer(ctx context.Context, arg GetRoomPlayerParams) (RoomPlayer, error) {
+	row := q.db.QueryRow(ctx, getRoomPlayer, arg.RoomID, arg.UserID)
+	var i RoomPlayer
+	err := row.Scan(
+		&i.RoomID,
+		&i.UserID,
+		&i.Score,
+		&i.Place,
+		&i.State,
+		&i.DisconnectedAt,
+	)
+	return i, err
+}
+
+const getRoomPlayers = `-- name: GetRoomPlayers :many
+SELECT room_id, user_id, score, place, state, disconnected_at FROM room_players
+WHERE room_id = $1
+ORDER BY score DESC, place ASC
+`
+
+func (q *Queries) GetRoomPlayers(ctx context.Context, roomID pgtype.UUID) ([]RoomPlayer, error) {
+	rows, err := q.db.Query(ctx, getRoomPlayers, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RoomPlayer
+	for rows.Next() {
+		var i RoomPlayer
+		if err := rows.Scan(
+			&i.RoomID,
+			&i.UserID,
+			&i.Score,
+			&i.Place,
+			&i.State,
+			&i.DisconnectedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRoomsByEvent = `-- name: GetRoomsByEvent :many
+SELECT id, event_id, name, description, created_date FROM rooms
+WHERE event_id = $1
+ORDER BY created_date ASC
+`
+
+func (q *Queries) GetRoomsByEvent(ctx context.Context, eventID pgtype.UUID) ([]Room, error) {
+	rows, err := q.db.Query(ctx, getRoomsByEvent, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Room
+	for rows.Next() {
+		var i Room
+		if err := rows.Scan(
+			&i.ID,
+			&i.EventID,
+			&i.Name,
+			&i.Description,
+			&i.CreatedDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRoomsWithEventDetails = `-- name: GetRoomsWithEventDetails :many
+SELECT r.id, r.event_id, r.name, r.description, r.created_date, e.title as event_title, e.type as event_type
+FROM rooms r
+JOIN events e ON r.event_id = e.id
+WHERE r.event_id = $1
+ORDER BY r.created_date ASC
+`
+
+type GetRoomsWithEventDetailsRow struct {
+	ID          pgtype.UUID
+	EventID     pgtype.UUID
+	Name        string
+	Description string
+	CreatedDate pgtype.Timestamptz
+	EventTitle  string
+	EventType   EventType
+}
+
+func (q *Queries) GetRoomsWithEventDetails(ctx context.Context, eventID pgtype.UUID) ([]GetRoomsWithEventDetailsRow, error) {
+	rows, err := q.db.Query(ctx, getRoomsWithEventDetails, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRoomsWithEventDetailsRow
+	for rows.Next() {
+		var i GetRoomsWithEventDetailsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EventID,
+			&i.Name,
+			&i.Description,
+			&i.CreatedDate,
+			&i.EventTitle,
+			&i.EventType,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSubmissionByID = `-- name: GetSubmissionByID :one
+SELECT id, user_id, code_problem_id, language_id, room_id, code_submitted, status, execution_time_ms, submitted_at, submitted_guild_id FROM submissions WHERE id = $1
+`
+
+func (q *Queries) GetSubmissionByID(ctx context.Context, id pgtype.UUID) (Submission, error) {
+	row := q.db.QueryRow(ctx, getSubmissionByID, id)
+	var i Submission
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CodeProblemID,
+		&i.LanguageID,
+		&i.RoomID,
+		&i.CodeSubmitted,
+		&i.Status,
+		&i.ExecutionTimeMs,
+		&i.SubmittedAt,
+		&i.SubmittedGuildID,
+	)
+	return i, err
+}
+
+const getSubmissionsByGuild = `-- name: GetSubmissionsByGuild :many
+SELECT s.id, s.user_id, s.code_problem_id, s.language_id, s.room_id, s.code_submitted, s.status, s.execution_time_ms, s.submitted_at, s.submitted_guild_id, cp.title as problem_title, l.name as language_name
+FROM submissions s
+JOIN code_problems cp ON s.code_problem_id = cp.id
+JOIN languages l ON s.language_id = l.id
+WHERE s.submitted_guild_id = $1
+ORDER BY s.submitted_at DESC
+`
+
+type GetSubmissionsByGuildRow struct {
+	ID               pgtype.UUID
+	UserID           pgtype.UUID
+	CodeProblemID    pgtype.UUID
+	LanguageID       pgtype.UUID
+	RoomID           pgtype.UUID
+	CodeSubmitted    string
+	Status           string
+	ExecutionTimeMs  pgtype.Int4
+	SubmittedAt      pgtype.Timestamptz
+	SubmittedGuildID pgtype.UUID
+	ProblemTitle     string
+	LanguageName     string
+}
+
+func (q *Queries) GetSubmissionsByGuild(ctx context.Context, submittedGuildID pgtype.UUID) ([]GetSubmissionsByGuildRow, error) {
+	rows, err := q.db.Query(ctx, getSubmissionsByGuild, submittedGuildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSubmissionsByGuildRow
+	for rows.Next() {
+		var i GetSubmissionsByGuildRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CodeProblemID,
+			&i.LanguageID,
+			&i.RoomID,
+			&i.CodeSubmitted,
+			&i.Status,
+			&i.ExecutionTimeMs,
+			&i.SubmittedAt,
+			&i.SubmittedGuildID,
+			&i.ProblemTitle,
+			&i.LanguageName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSubmissionsByProblem = `-- name: GetSubmissionsByProblem :many
+SELECT s.id, s.user_id, s.code_problem_id, s.language_id, s.room_id, s.code_submitted, s.status, s.execution_time_ms, s.submitted_at, s.submitted_guild_id, l.name as language_name
+FROM submissions s
+JOIN languages l ON s.language_id = l.id
+WHERE s.code_problem_id = $1
+ORDER BY s.submitted_at DESC
+`
+
+type GetSubmissionsByProblemRow struct {
+	ID               pgtype.UUID
+	UserID           pgtype.UUID
+	CodeProblemID    pgtype.UUID
+	LanguageID       pgtype.UUID
+	RoomID           pgtype.UUID
+	CodeSubmitted    string
+	Status           string
+	ExecutionTimeMs  pgtype.Int4
+	SubmittedAt      pgtype.Timestamptz
+	SubmittedGuildID pgtype.UUID
+	LanguageName     string
+}
+
+func (q *Queries) GetSubmissionsByProblem(ctx context.Context, codeProblemID pgtype.UUID) ([]GetSubmissionsByProblemRow, error) {
+	rows, err := q.db.Query(ctx, getSubmissionsByProblem, codeProblemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSubmissionsByProblemRow
+	for rows.Next() {
+		var i GetSubmissionsByProblemRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CodeProblemID,
+			&i.LanguageID,
+			&i.RoomID,
+			&i.CodeSubmitted,
+			&i.Status,
+			&i.ExecutionTimeMs,
+			&i.SubmittedAt,
+			&i.SubmittedGuildID,
+			&i.LanguageName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSubmissionsByRoom = `-- name: GetSubmissionsByRoom :many
+SELECT s.id, s.user_id, s.code_problem_id, s.language_id, s.room_id, s.code_submitted, s.status, s.execution_time_ms, s.submitted_at, s.submitted_guild_id, cp.title as problem_title, l.name as language_name
+FROM submissions s
+JOIN code_problems cp ON s.code_problem_id = cp.id
+JOIN languages l ON s.language_id = l.id
+WHERE s.room_id = $1
+ORDER BY s.submitted_at DESC
+`
+
+type GetSubmissionsByRoomRow struct {
+	ID               pgtype.UUID
+	UserID           pgtype.UUID
+	CodeProblemID    pgtype.UUID
+	LanguageID       pgtype.UUID
+	RoomID           pgtype.UUID
+	CodeSubmitted    string
+	Status           string
+	ExecutionTimeMs  pgtype.Int4
+	SubmittedAt      pgtype.Timestamptz
+	SubmittedGuildID pgtype.UUID
+	ProblemTitle     string
+	LanguageName     string
+}
+
+func (q *Queries) GetSubmissionsByRoom(ctx context.Context, roomID pgtype.UUID) ([]GetSubmissionsByRoomRow, error) {
+	rows, err := q.db.Query(ctx, getSubmissionsByRoom, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSubmissionsByRoomRow
+	for rows.Next() {
+		var i GetSubmissionsByRoomRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CodeProblemID,
+			&i.LanguageID,
+			&i.RoomID,
+			&i.CodeSubmitted,
+			&i.Status,
+			&i.ExecutionTimeMs,
+			&i.SubmittedAt,
+			&i.SubmittedGuildID,
+			&i.ProblemTitle,
+			&i.LanguageName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSubmissionsByStatus = `-- name: GetSubmissionsByStatus :many
+SELECT s.id, s.user_id, s.code_problem_id, s.language_id, s.room_id, s.code_submitted, s.status, s.execution_time_ms, s.submitted_at, s.submitted_guild_id, cp.title as problem_title, l.name as language_name
+FROM submissions s
+JOIN code_problems cp ON s.code_problem_id = cp.id
+JOIN languages l ON s.language_id = l.id
+WHERE s.status = $1
+ORDER BY s.submitted_at DESC
+`
+
+type GetSubmissionsByStatusRow struct {
+	ID               pgtype.UUID
+	UserID           pgtype.UUID
+	CodeProblemID    pgtype.UUID
+	LanguageID       pgtype.UUID
+	RoomID           pgtype.UUID
+	CodeSubmitted    string
+	Status           string
+	ExecutionTimeMs  pgtype.Int4
+	SubmittedAt      pgtype.Timestamptz
+	SubmittedGuildID pgtype.UUID
+	ProblemTitle     string
+	LanguageName     string
+}
+
+func (q *Queries) GetSubmissionsByStatus(ctx context.Context, status string) ([]GetSubmissionsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, getSubmissionsByStatus, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSubmissionsByStatusRow
+	for rows.Next() {
+		var i GetSubmissionsByStatusRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CodeProblemID,
+			&i.LanguageID,
+			&i.RoomID,
+			&i.CodeSubmitted,
+			&i.Status,
+			&i.ExecutionTimeMs,
+			&i.SubmittedAt,
+			&i.SubmittedGuildID,
+			&i.ProblemTitle,
+			&i.LanguageName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSubmissionsByUser = `-- name: GetSubmissionsByUser :many
+SELECT s.id, s.user_id, s.code_problem_id, s.language_id, s.room_id, s.code_submitted, s.status, s.execution_time_ms, s.submitted_at, s.submitted_guild_id, cp.title as problem_title, l.name as language_name
+FROM submissions s
+JOIN code_problems cp ON s.code_problem_id = cp.id
+JOIN languages l ON s.language_id = l.id
+WHERE s.user_id = $1
+ORDER BY s.submitted_at DESC
+`
+
+type GetSubmissionsByUserRow struct {
+	ID               pgtype.UUID
+	UserID           pgtype.UUID
+	CodeProblemID    pgtype.UUID
+	LanguageID       pgtype.UUID
+	RoomID           pgtype.UUID
+	CodeSubmitted    string
+	Status           string
+	ExecutionTimeMs  pgtype.Int4
+	SubmittedAt      pgtype.Timestamptz
+	SubmittedGuildID pgtype.UUID
+	ProblemTitle     string
+	LanguageName     string
+}
+
+func (q *Queries) GetSubmissionsByUser(ctx context.Context, userID pgtype.UUID) ([]GetSubmissionsByUserRow, error) {
+	rows, err := q.db.Query(ctx, getSubmissionsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSubmissionsByUserRow
+	for rows.Next() {
+		var i GetSubmissionsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CodeProblemID,
+			&i.LanguageID,
+			&i.RoomID,
+			&i.CodeSubmitted,
+			&i.Status,
+			&i.ExecutionTimeMs,
+			&i.SubmittedAt,
+			&i.SubmittedGuildID,
+			&i.ProblemTitle,
+			&i.LanguageName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTagByID = `-- name: GetTagByID :one
+SELECT id, name, created_at FROM tags WHERE id = $1
+`
+
+func (q *Queries) GetTagByID(ctx context.Context, id pgtype.UUID) (Tag, error) {
+	row := q.db.QueryRow(ctx, getTagByID, id)
+	var i Tag
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
+const getTagByName = `-- name: GetTagByName :one
+SELECT id, name, created_at FROM tags WHERE name = $1
+`
+
+func (q *Queries) GetTagByName(ctx context.Context, name string) (Tag, error) {
+	row := q.db.QueryRow(ctx, getTagByName, name)
+	var i Tag
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
+const getTags = `-- name: GetTags :many
+SELECT id, name, created_at FROM tags
+ORDER BY name
+LIMIT $1
+OFFSET $2
+`
+
+type GetTagsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetTags(ctx context.Context, arg GetTagsParams) ([]Tag, error) {
+	rows, err := q.db.Query(ctx, getTags, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tag
+	for rows.Next() {
+		var i Tag
+		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTestCaseByID = `-- name: GetTestCaseByID :one
+SELECT id, code_problem_id, input, expected_output, is_hidden FROM test_cases WHERE id = $1
+`
+
+func (q *Queries) GetTestCaseByID(ctx context.Context, id pgtype.UUID) (TestCase, error) {
+	row := q.db.QueryRow(ctx, getTestCaseByID, id)
+	var i TestCase
+	err := row.Scan(
+		&i.ID,
+		&i.CodeProblemID,
+		&i.Input,
+		&i.ExpectedOutput,
+		&i.IsHidden,
+	)
+	return i, err
+}
+
+const getTestCasesByProblem = `-- name: GetTestCasesByProblem :many
+SELECT id, code_problem_id, input, expected_output, is_hidden FROM test_cases
+WHERE code_problem_id = $1
+ORDER BY is_hidden, id
+`
+
+func (q *Queries) GetTestCasesByProblem(ctx context.Context, codeProblemID pgtype.UUID) ([]TestCase, error) {
+	rows, err := q.db.Query(ctx, getTestCasesByProblem, codeProblemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TestCase
+	for rows.Next() {
+		var i TestCase
+		if err := rows.Scan(
+			&i.ID,
+			&i.CodeProblemID,
+			&i.Input,
+			&i.ExpectedOutput,
+			&i.IsHidden,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserSubmissionStats = `-- name: GetUserSubmissionStats :one
+SELECT
+    COUNT(*) as total_submissions,
+    COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted_count,
+    COUNT(CASE WHEN status = 'wrong_answer' THEN 1 END) as wrong_answer_count,
+    COUNT(CASE WHEN status = 'time_limit_exceeded' THEN 1 END) as timeout_count,
+    AVG(execution_time_ms) as avg_execution_time
+FROM submissions
+WHERE user_id = $1
+`
+
+type GetUserSubmissionStatsRow struct {
+	TotalSubmissions int64
+	AcceptedCount    int64
+	WrongAnswerCount int64
+	TimeoutCount     int64
+	AvgExecutionTime float64
+}
+
+func (q *Queries) GetUserSubmissionStats(ctx context.Context, userID pgtype.UUID) (GetUserSubmissionStatsRow, error) {
+	row := q.db.QueryRow(ctx, getUserSubmissionStats, userID)
+	var i GetUserSubmissionStatsRow
+	err := row.Scan(
+		&i.TotalSubmissions,
+		&i.AcceptedCount,
+		&i.WrongAnswerCount,
+		&i.TimeoutCount,
+		&i.AvgExecutionTime,
+	)
+	return i, err
+}
+
+const updateCodeProblem = `-- name: UpdateCodeProblem :one
+UPDATE code_problems
+SET title = $2, problem_statement = $3, difficulty = $4
+WHERE id = $1
+RETURNING id, title, problem_statement, difficulty, created_at
+`
+
+type UpdateCodeProblemParams struct {
+	ID               pgtype.UUID
+	Title            string
+	ProblemStatement string
+	Difficulty       int32
+}
+
+func (q *Queries) UpdateCodeProblem(ctx context.Context, arg UpdateCodeProblemParams) (CodeProblem, error) {
+	row := q.db.QueryRow(ctx, updateCodeProblem,
+		arg.ID,
+		arg.Title,
+		arg.ProblemStatement,
+		arg.Difficulty,
+	)
+	var i CodeProblem
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.ProblemStatement,
+		&i.Difficulty,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateCodeProblemLanguageDetail = `-- name: UpdateCodeProblemLanguageDetail :one
+UPDATE code_problem_language_details
+SET solution_stub = $3, driver_code = $4, time_constraint_ms = $5, space_constraint_mb = $6
+WHERE code_problem_id = $1 AND language_id = $2
+RETURNING code_problem_id, language_id, solution_stub, driver_code, time_constraint_ms, space_constraint_mb
+`
+
+type UpdateCodeProblemLanguageDetailParams struct {
+	CodeProblemID     pgtype.UUID
+	LanguageID        pgtype.UUID
+	SolutionStub      string
+	DriverCode        string
+	TimeConstraintMs  int32
+	SpaceConstraintMb int32
+}
+
+func (q *Queries) UpdateCodeProblemLanguageDetail(ctx context.Context, arg UpdateCodeProblemLanguageDetailParams) (CodeProblemLanguageDetail, error) {
+	row := q.db.QueryRow(ctx, updateCodeProblemLanguageDetail,
+		arg.CodeProblemID,
+		arg.LanguageID,
+		arg.SolutionStub,
+		arg.DriverCode,
+		arg.TimeConstraintMs,
+		arg.SpaceConstraintMb,
+	)
+	var i CodeProblemLanguageDetail
+	err := row.Scan(
+		&i.CodeProblemID,
+		&i.LanguageID,
+		&i.SolutionStub,
+		&i.DriverCode,
+		&i.TimeConstraintMs,
+		&i.SpaceConstraintMb,
+	)
+	return i, err
+}
+
+const updateEvent = `-- name: UpdateEvent :one
+UPDATE events
+SET title = $2, description = $3, type = $4, started_date = $5, end_date = $6
+WHERE id = $1
+RETURNING id, title, description, type, started_date, end_date
+`
+
+type UpdateEventParams struct {
+	ID          pgtype.UUID
+	Title       string
+	Description string
+	Type        EventType
+	StartedDate pgtype.Timestamptz
+	EndDate     pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateEvent(ctx context.Context, arg UpdateEventParams) (Event, error) {
+	row := q.db.QueryRow(ctx, updateEvent,
+		arg.ID,
+		arg.Title,
+		arg.Description,
+		arg.Type,
+		arg.StartedDate,
+		arg.EndDate,
+	)
+	var i Event
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.Type,
+		&i.StartedDate,
+		&i.EndDate,
+	)
+	return i, err
+}
+
+const updateEventCodeProblemScore = `-- name: UpdateEventCodeProblemScore :one
+UPDATE event_code_problems
+SET score = $3
+WHERE event_id = $1 AND code_problem_id = $2
+RETURNING event_id, code_problem_id, score
+`
+
+type UpdateEventCodeProblemScoreParams struct {
+	EventID       pgtype.UUID
+	CodeProblemID pgtype.UUID
+	Score         int32
+}
+
+func (q *Queries) UpdateEventCodeProblemScore(ctx context.Context, arg UpdateEventCodeProblemScoreParams) (EventCodeProblem, error) {
+	row := q.db.QueryRow(ctx, updateEventCodeProblemScore, arg.EventID, arg.CodeProblemID, arg.Score)
+	var i EventCodeProblem
+	err := row.Scan(&i.EventID, &i.CodeProblemID, &i.Score)
+	return i, err
+}
+
+const updateEventGuildParticipantRoom = `-- name: UpdateEventGuildParticipantRoom :one
+UPDATE event_guild_participants
+SET room_id = $3
+WHERE event_id = $1 AND guild_id = $2
+RETURNING event_id, guild_id, joined_at, room_id
+`
+
+type UpdateEventGuildParticipantRoomParams struct {
+	EventID pgtype.UUID
+	GuildID pgtype.UUID
+	RoomID  pgtype.UUID
+}
+
+func (q *Queries) UpdateEventGuildParticipantRoom(ctx context.Context, arg UpdateEventGuildParticipantRoomParams) (EventGuildParticipant, error) {
+	row := q.db.QueryRow(ctx, updateEventGuildParticipantRoom, arg.EventID, arg.GuildID, arg.RoomID)
+	var i EventGuildParticipant
+	err := row.Scan(
+		&i.EventID,
+		&i.GuildID,
+		&i.JoinedAt,
+		&i.RoomID,
+	)
+	return i, err
+}
+
+const updateGuildLeaderboardEntry = `-- name: UpdateGuildLeaderboardEntry :one
+UPDATE guild_leaderboard_entries
+SET rank = $3, total_score = $4
+WHERE guild_id = $1 AND event_id = $2
+RETURNING id, guild_id, event_id, rank, total_score, snapshot_date
+`
+
+type UpdateGuildLeaderboardEntryParams struct {
+	GuildID    pgtype.UUID
+	EventID    pgtype.UUID
+	Rank       int32
+	TotalScore int32
+}
+
+func (q *Queries) UpdateGuildLeaderboardEntry(ctx context.Context, arg UpdateGuildLeaderboardEntryParams) (GuildLeaderboardEntry, error) {
+	row := q.db.QueryRow(ctx, updateGuildLeaderboardEntry,
+		arg.GuildID,
+		arg.EventID,
+		arg.Rank,
+		arg.TotalScore,
+	)
+	var i GuildLeaderboardEntry
+	err := row.Scan(
+		&i.ID,
+		&i.GuildID,
+		&i.EventID,
+		&i.Rank,
+		&i.TotalScore,
+		&i.SnapshotDate,
+	)
+	return i, err
+}
+
+const updateLanguage = `-- name: UpdateLanguage :one
+UPDATE languages
+SET name = $2, compile_cmd = $3, run_cmd = $4
+WHERE id = $1
+RETURNING id, name, compile_cmd, run_cmd
+`
+
+type UpdateLanguageParams struct {
+	ID         pgtype.UUID
+	Name       string
+	CompileCmd string
+	RunCmd     string
+}
+
+func (q *Queries) UpdateLanguage(ctx context.Context, arg UpdateLanguageParams) (Language, error) {
+	row := q.db.QueryRow(ctx, updateLanguage,
+		arg.ID,
+		arg.Name,
+		arg.CompileCmd,
+		arg.RunCmd,
+	)
+	var i Language
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CompileCmd,
+		&i.RunCmd,
+	)
+	return i, err
+}
+
+const updateLeaderboardEntry = `-- name: UpdateLeaderboardEntry :one
+UPDATE leaderboard_entries
+SET rank = $3, score = $4
+WHERE user_id = $1 AND event_id = $2
+RETURNING id, user_id, event_id, rank, score, snapshot_date
+`
+
+type UpdateLeaderboardEntryParams struct {
+	UserID  pgtype.UUID
+	EventID pgtype.UUID
+	Rank    int32
+	Score   int32
+}
+
+func (q *Queries) UpdateLeaderboardEntry(ctx context.Context, arg UpdateLeaderboardEntryParams) (LeaderboardEntry, error) {
+	row := q.db.QueryRow(ctx, updateLeaderboardEntry,
+		arg.UserID,
+		arg.EventID,
+		arg.Rank,
+		arg.Score,
+	)
+	var i LeaderboardEntry
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EventID,
+		&i.Rank,
+		&i.Score,
+		&i.SnapshotDate,
+	)
+	return i, err
+}
+
+const updateRoom = `-- name: UpdateRoom :one
+UPDATE rooms
+SET name = $2, description = $3
+WHERE id = $1
+RETURNING id, event_id, name, description, created_date
+`
+
+type UpdateRoomParams struct {
+	ID          pgtype.UUID
+	Name        string
+	Description string
+}
+
+func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error) {
+	row := q.db.QueryRow(ctx, updateRoom, arg.ID, arg.Name, arg.Description)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.Name,
+		&i.Description,
+		&i.CreatedDate,
+	)
+	return i, err
+}
+
+const updateRoomPlayerScore = `-- name: UpdateRoomPlayerScore :one
+UPDATE room_players
+SET score = $3, place = $4
+WHERE room_id = $1 AND user_id = $2
+RETURNING room_id, user_id, score, place, state, disconnected_at
+`
+
+type UpdateRoomPlayerScoreParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+	Score  int32
+	Place  pgtype.Int4
+}
+
+func (q *Queries) UpdateRoomPlayerScore(ctx context.Context, arg UpdateRoomPlayerScoreParams) (RoomPlayer, error) {
+	row := q.db.QueryRow(ctx, updateRoomPlayerScore,
+		arg.RoomID,
+		arg.UserID,
+		arg.Score,
+		arg.Place,
+	)
+	var i RoomPlayer
+	err := row.Scan(
+		&i.RoomID,
+		&i.UserID,
+		&i.Score,
+		&i.Place,
+		&i.State,
+		&i.DisconnectedAt,
+	)
+	return i, err
+}
+
+const updateRoomPlayerState = `-- name: UpdateRoomPlayerState :one
+UPDATE room_players
+SET state = $3
+WHERE room_id = $1 AND user_id = $2
+RETURNING room_id, user_id, score, place, state, disconnected_at
+`
+
+type UpdateRoomPlayerStateParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+	State  pgtype.Text
+}
+
+func (q *Queries) UpdateRoomPlayerState(ctx context.Context, arg UpdateRoomPlayerStateParams) (RoomPlayer, error) {
+	row := q.db.QueryRow(ctx, updateRoomPlayerState, arg.RoomID, arg.UserID, arg.State)
+	var i RoomPlayer
+	err := row.Scan(
+		&i.RoomID,
+		&i.UserID,
+		&i.Score,
+		&i.Place,
+		&i.State,
+		&i.DisconnectedAt,
+	)
+	return i, err
+}
+
+const updateSubmissionStatus = `-- name: UpdateSubmissionStatus :one
+UPDATE submissions
+SET status = $2, execution_time_ms = $3
+WHERE id = $1
+RETURNING id, user_id, code_problem_id, language_id, room_id, code_submitted, status, execution_time_ms, submitted_at, submitted_guild_id
+`
+
+type UpdateSubmissionStatusParams struct {
+	ID              pgtype.UUID
+	Status          string
+	ExecutionTimeMs pgtype.Int4
+}
+
+func (q *Queries) UpdateSubmissionStatus(ctx context.Context, arg UpdateSubmissionStatusParams) (Submission, error) {
+	row := q.db.QueryRow(ctx, updateSubmissionStatus, arg.ID, arg.Status, arg.ExecutionTimeMs)
+	var i Submission
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CodeProblemID,
+		&i.LanguageID,
+		&i.RoomID,
+		&i.CodeSubmitted,
+		&i.Status,
+		&i.ExecutionTimeMs,
+		&i.SubmittedAt,
+		&i.SubmittedGuildID,
+	)
+	return i, err
+}
+
+const updateTag = `-- name: UpdateTag :one
+UPDATE tags
+SET name = $2
+WHERE id = $1
+RETURNING id, name, created_at
+`
+
+type UpdateTagParams struct {
+	ID   pgtype.UUID
+	Name string
+}
+
+func (q *Queries) UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error) {
+	row := q.db.QueryRow(ctx, updateTag, arg.ID, arg.Name)
+	var i Tag
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
+const updateTestCase = `-- name: UpdateTestCase :one
+UPDATE test_cases
+SET input = $2, expected_output = $3, is_hidden = $4
+WHERE id = $1
+RETURNING id, code_problem_id, input, expected_output, is_hidden
+`
+
+type UpdateTestCaseParams struct {
+	ID             pgtype.UUID
+	Input          []byte
+	ExpectedOutput []byte
+	IsHidden       bool
+}
+
+func (q *Queries) UpdateTestCase(ctx context.Context, arg UpdateTestCaseParams) (TestCase, error) {
+	row := q.db.QueryRow(ctx, updateTestCase,
+		arg.ID,
+		arg.Input,
+		arg.ExpectedOutput,
+		arg.IsHidden,
+	)
+	var i TestCase
+	err := row.Scan(
+		&i.ID,
+		&i.CodeProblemID,
+		&i.Input,
+		&i.ExpectedOutput,
+		&i.IsHidden,
+	)
+	return i, err
 }

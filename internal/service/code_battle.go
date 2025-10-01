@@ -9,6 +9,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	DefaultGetLimit  = 10
+	DefaultGetOffset = 0
+)
+
 type CodeBattleServer struct {
 	pb.UnimplementedCodeBattleServiceServer
 	queries *store.Queries
@@ -23,7 +28,7 @@ func NewCodeBattleServer(queries *store.Queries, logger *slog.Logger) *CodeBattl
 }
 
 func (s *CodeBattleServer) GetEvents(ctx context.Context, req *pb.GetEventsRequest) (*pb.GetEventsResponse, error) {
-	events, err := s.queries.GetEvents(ctx)
+	events, err := s.queries.GetEvents(ctx, store.GetEventsParams{Limit: DefaultGetLimit, Offset: DefaultGetOffset})
 	if err != nil {
 		s.logger.Error("err at getting events", "err", err)
 		status := pb.Status{Success: false, Message: "get events failed", ErrorMessage: err.Error()}

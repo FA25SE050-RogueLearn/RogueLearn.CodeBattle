@@ -8,7 +8,9 @@ import (
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/events"
 )
 
-func (hr *HandlerRepo) EventHandler(w http.ResponseWriter, r *http.Request) {
+// SSE Event Handler for room's leaderboard
+// Send the room events to connected players
+func (hr *HandlerRepo) GetRoomLeaderboardEventHandler(w http.ResponseWriter, r *http.Request) {
 	playerId, roomId, err := getRequestPlayerIdAndRoomId(r, hr.logger)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -85,4 +87,10 @@ func (hr *HandlerRepo) EventHandler(w http.ResponseWriter, r *http.Request) {
 			w.(http.Flusher).Flush()
 		}
 	}
+}
+
+// SSE Event Handler for event's leaderboards
+// Send the leaderboard changes of events to connected users
+func (hr *HandlerRepo) GetEventLeaderboardEventHandler(w http.ResponseWriter, r *http.Request) {
+
 }

@@ -3,7 +3,6 @@ package handlers
 import (
 	"log/slog"
 
-	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/hub"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/store"
 )
 
@@ -16,7 +15,7 @@ type HandlerRepo struct {
 }
 
 // NewHandlerRepo creates a new HandlerRepo with the provided dependencies.
-func NewHandlerRepo(logger *slog.Logger, gr *hub.GlobalRooms, queries *store.Queries) *HandlerRepo {
+func NewHandlerRepo(logger *slog.Logger, queries *store.Queries) *HandlerRepo {
 	return &HandlerRepo{
 		logger:  logger,
 		queries: queries,
