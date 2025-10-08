@@ -13,6 +13,7 @@
 
 # Test logs
 test_results/
+*.log
 
 # Code coverage profiles and other test artifacts
 *.out
