@@ -1,0 +1,42 @@
+=== RUN   TestDecodeJSON
+=== RUN   TestDecodeJSON/Successful_JSON_decode
+=== RUN   TestDecodeJSON/Allow_unknown_fields_in_non-strict_mode
+=== RUN   TestDecodeJSON/Empty_body_error
+=== RUN   TestDecodeJSON/Malformed_JSON_syntax_error
+=== RUN   TestDecodeJSON/Unexpected_EOF_error
+=== RUN   TestDecodeJSON/Incorrect_JSON_type_error
+=== RUN   TestDecodeJSON/Multiple_JSON_values_error
+=== RUN   TestDecodeJSON/Request_body_too_large
+--- PASS: TestDecodeJSON (0.00s)
+    --- PASS: TestDecodeJSON/Successful_JSON_decode (0.00s)
+    --- PASS: TestDecodeJSON/Allow_unknown_fields_in_non-strict_mode (0.00s)
+    --- PASS: TestDecodeJSON/Empty_body_error (0.00s)
+    --- PASS: TestDecodeJSON/Malformed_JSON_syntax_error (0.00s)
+    --- PASS: TestDecodeJSON/Unexpected_EOF_error (0.00s)
+    --- PASS: TestDecodeJSON/Incorrect_JSON_type_error (0.00s)
+    --- PASS: TestDecodeJSON/Multiple_JSON_values_error (0.00s)
+    --- PASS: TestDecodeJSON/Request_body_too_large (0.00s)
+=== RUN   TestDecodeJSONStrict
+=== RUN   TestDecodeJSONStrict/Successful_JSON_decode_in_strict_mode
+=== RUN   TestDecodeJSONStrict/Disallow_unknown_fields_in_strict_mode
+--- PASS: TestDecodeJSONStrict (0.00s)
+    --- PASS: TestDecodeJSONStrict/Successful_JSON_decode_in_strict_mode (0.00s)
+    --- PASS: TestDecodeJSONStrict/Disallow_unknown_fields_in_strict_mode (0.00s)
+=== RUN   TestDecodeJSONWithNilPointer
+=== RUN   TestDecodeJSONWithNilPointer/Panic_on_invalid_unmarshal_target
+--- PASS: TestDecodeJSONWithNilPointer (0.00s)
+    --- PASS: TestDecodeJSONWithNilPointer/Panic_on_invalid_unmarshal_target (0.00s)
+=== RUN   TestDecodeJSONWithCustomReader
+=== RUN   TestDecodeJSONWithCustomReader/Handle_reader_error
+--- PASS: TestDecodeJSONWithCustomReader (0.00s)
+    --- PASS: TestDecodeJSONWithCustomReader/Handle_reader_error (0.00s)
+=== RUN   TestDecodeJSONEdgeCases
+=== RUN   TestDecodeJSONEdgeCases/JSON_with_only_whitespace
+=== RUN   TestDecodeJSONEdgeCases/Valid_JSON_with_trailing_whitespace
+=== RUN   TestDecodeJSONEdgeCases/JSON_array_instead_of_object
+--- PASS: TestDecodeJSONEdgeCases (0.00s)
+    --- PASS: TestDecodeJSONEdgeCases/JSON_with_only_whitespace (0.00s)
+    --- PASS: TestDecodeJSONEdgeCases/Valid_JSON_with_trailing_whitespace (0.00s)
+    --- PASS: TestDecodeJSONEdgeCases/JSON_array_instead_of_object (0.00s)
+PASS
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/request	(cached)

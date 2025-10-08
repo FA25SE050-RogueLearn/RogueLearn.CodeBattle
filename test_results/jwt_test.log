@@ -1,0 +1,12 @@
+=== RUN   TestGetUserClaimsFromToken
+=== RUN   TestGetUserClaimsFromToken/Successful_Parse_of_Valid_Token
+=== RUN   TestGetUserClaimsFromToken/Fail_on_Invalid_Signature
+=== RUN   TestGetUserClaimsFromToken/Successful_Parse_of_Expired_Token
+=== RUN   TestGetUserClaimsFromToken/Fail_on_Malformed_Token
+--- PASS: TestGetUserClaimsFromToken (0.00s)
+    --- PASS: TestGetUserClaimsFromToken/Successful_Parse_of_Valid_Token (0.00s)
+    --- PASS: TestGetUserClaimsFromToken/Fail_on_Invalid_Signature (0.00s)
+    --- PASS: TestGetUserClaimsFromToken/Successful_Parse_of_Expired_Token (0.00s)
+    --- PASS: TestGetUserClaimsFromToken/Fail_on_Malformed_Token (0.00s)
+PASS
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/jwt	(cached)

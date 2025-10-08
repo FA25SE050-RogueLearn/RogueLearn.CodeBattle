@@ -1,0 +1,269 @@
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/cmd/api		coverage: 0.0% of statements
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/cmd/main		coverage: 0.0% of statements
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/database		coverage: 0.0% of statements
+=== RUN   TestEventTypes
+=== RUN   TestEventTypes/Event_type_constants_are_correctly_defined
+=== RUN   TestEventTypes/Event_types_are_strings
+--- PASS: TestEventTypes (0.00s)
+    --- PASS: TestEventTypes/Event_type_constants_are_correctly_defined (0.00s)
+    --- PASS: TestEventTypes/Event_types_are_strings (0.00s)
+=== RUN   TestJudgeStatus
+=== RUN   TestJudgeStatus/Judge_status_constants_are_correctly_defined
+=== RUN   TestJudgeStatus/Judge_statuses_are_strings
+--- PASS: TestJudgeStatus (0.00s)
+    --- PASS: TestJudgeStatus/Judge_status_constants_are_correctly_defined (0.00s)
+    --- PASS: TestJudgeStatus/Judge_statuses_are_strings (0.00s)
+=== RUN   TestSseEvent
+=== RUN   TestSseEvent/Create_SSE_event_with_string_data
+=== RUN   TestSseEvent/Create_SSE_event_with_struct_data
+=== RUN   TestSseEvent/Create_SSE_event_with_nil_data
+--- PASS: TestSseEvent (0.00s)
+    --- PASS: TestSseEvent/Create_SSE_event_with_string_data (0.00s)
+    --- PASS: TestSseEvent/Create_SSE_event_with_struct_data (0.00s)
+    --- PASS: TestSseEvent/Create_SSE_event_with_nil_data (0.00s)
+=== RUN   TestSolutionSubmitted
+=== RUN   TestSolutionSubmitted/Create_valid_SolutionSubmitted_event
+=== RUN   TestSolutionSubmitted/Create_SolutionSubmitted_with_empty_fields
+--- PASS: TestSolutionSubmitted (0.00s)
+    --- PASS: TestSolutionSubmitted/Create_valid_SolutionSubmitted_event (0.00s)
+    --- PASS: TestSolutionSubmitted/Create_SolutionSubmitted_with_empty_fields (0.00s)
+=== RUN   TestSolutionResult
+=== RUN   TestSolutionResult/Create_SolutionResult_with_Accepted_status
+=== RUN   TestSolutionResult/Create_SolutionResult_with_Wrong_Answer_status
+=== RUN   TestSolutionResult/Create_SolutionResult_with_Runtime_Error_status
+=== RUN   TestSolutionResult/Create_SolutionResult_with_negative_score
+--- PASS: TestSolutionResult (0.00s)
+    --- PASS: TestSolutionResult/Create_SolutionResult_with_Accepted_status (0.00s)
+    --- PASS: TestSolutionResult/Create_SolutionResult_with_Wrong_Answer_status (0.00s)
+    --- PASS: TestSolutionResult/Create_SolutionResult_with_Runtime_Error_status (0.00s)
+    --- PASS: TestSolutionResult/Create_SolutionResult_with_negative_score (0.00s)
+=== RUN   TestLeaderboardUpdated
+=== RUN   TestLeaderboardUpdated/Create_LeaderboardUpdated_event
+=== RUN   TestLeaderboardUpdated/Create_LeaderboardUpdated_with_nil_UUID
+--- PASS: TestLeaderboardUpdated (0.00s)
+    --- PASS: TestLeaderboardUpdated/Create_LeaderboardUpdated_event (0.00s)
+    --- PASS: TestLeaderboardUpdated/Create_LeaderboardUpdated_with_nil_UUID (0.00s)
+=== RUN   TestPlayerJoined
+=== RUN   TestPlayerJoined/Create_PlayerJoined_event
+=== RUN   TestPlayerJoined/Create_PlayerJoined_with_same_player_and_room_ID
+--- PASS: TestPlayerJoined (0.00s)
+    --- PASS: TestPlayerJoined/Create_PlayerJoined_event (0.00s)
+    --- PASS: TestPlayerJoined/Create_PlayerJoined_with_same_player_and_room_ID (0.00s)
+=== RUN   TestPlayerLeft
+=== RUN   TestPlayerLeft/Create_PlayerLeft_event
+=== RUN   TestPlayerLeft/PlayerLeft_and_PlayerJoined_have_same_structure
+--- PASS: TestPlayerLeft (0.00s)
+    --- PASS: TestPlayerLeft/Create_PlayerLeft_event (0.00s)
+    --- PASS: TestPlayerLeft/PlayerLeft_and_PlayerJoined_have_same_structure (0.00s)
+=== RUN   TestRoomDeleted
+=== RUN   TestRoomDeleted/Create_RoomDeleted_event
+=== RUN   TestRoomDeleted/Create_RoomDeleted_with_zero_UUID
+--- PASS: TestRoomDeleted (0.00s)
+    --- PASS: TestRoomDeleted/Create_RoomDeleted_event (0.00s)
+    --- PASS: TestRoomDeleted/Create_RoomDeleted_with_zero_UUID (0.00s)
+=== RUN   TestEventInteractions
+=== RUN   TestEventInteractions/Multiple_events_with_same_IDs
+=== RUN   TestEventInteractions/Solution_submission_workflow
+--- PASS: TestEventInteractions (0.00s)
+    --- PASS: TestEventInteractions/Multiple_events_with_same_IDs (0.00s)
+    --- PASS: TestEventInteractions/Solution_submission_workflow (0.00s)
+PASS
+coverage: [no statements]
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/events	0.006s	coverage: [no statements]
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/executor		coverage: 0.0% of statements
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/handler		coverage: 0.0% of statements
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/hub		coverage: 0.0% of statements
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/service		coverage: 0.0% of statements
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/store		coverage: 0.0% of statements
+=== RUN   TestGetString
+=== RUN   TestGetString/Return_environment_variable_when_exists
+=== RUN   TestGetString/Return_default_value_when_environment_variable_doesn't_exist
+=== RUN   TestGetString/Return_empty_string_when_environment_variable_is_empty
+=== RUN   TestGetString/Return_environment_variable_with_spaces
+--- PASS: TestGetString (0.00s)
+    --- PASS: TestGetString/Return_environment_variable_when_exists (0.00s)
+    --- PASS: TestGetString/Return_default_value_when_environment_variable_doesn't_exist (0.00s)
+    --- PASS: TestGetString/Return_empty_string_when_environment_variable_is_empty (0.00s)
+    --- PASS: TestGetString/Return_environment_variable_with_spaces (0.00s)
+=== RUN   TestGetInt
+=== RUN   TestGetInt/Return_parsed_integer_when_valid
+=== RUN   TestGetInt/Return_default_value_when_environment_variable_doesn't_exist
+=== RUN   TestGetInt/Return_negative_integer_when_valid
+=== RUN   TestGetInt/Return_zero_when_environment_variable_is_zero
+=== RUN   TestGetInt/Panic_when_environment_variable_is_not_a_valid_integer
+=== RUN   TestGetInt/Panic_when_environment_variable_is_empty_string
+=== RUN   TestGetInt/Panic_when_environment_variable_has_spaces
+=== RUN   TestGetInt/Panic_when_environment_variable_is_floating_point
+--- PASS: TestGetInt (0.00s)
+    --- PASS: TestGetInt/Return_parsed_integer_when_valid (0.00s)
+    --- PASS: TestGetInt/Return_default_value_when_environment_variable_doesn't_exist (0.00s)
+    --- PASS: TestGetInt/Return_negative_integer_when_valid (0.00s)
+    --- PASS: TestGetInt/Return_zero_when_environment_variable_is_zero (0.00s)
+    --- PASS: TestGetInt/Panic_when_environment_variable_is_not_a_valid_integer (0.00s)
+    --- PASS: TestGetInt/Panic_when_environment_variable_is_empty_string (0.00s)
+    --- PASS: TestGetInt/Panic_when_environment_variable_has_spaces (0.00s)
+    --- PASS: TestGetInt/Panic_when_environment_variable_is_floating_point (0.00s)
+=== RUN   TestGetBool
+=== RUN   TestGetBool/Return_true_for_valid_true_values
+=== RUN   TestGetBool/Return_true_for_valid_true_values/Value:_true
+=== RUN   TestGetBool/Return_true_for_valid_true_values/Value:_TRUE
+=== RUN   TestGetBool/Return_true_for_valid_true_values/Value:_True
+=== RUN   TestGetBool/Return_true_for_valid_true_values/Value:_1
+=== RUN   TestGetBool/Return_true_for_valid_true_values/Value:_t
+=== RUN   TestGetBool/Return_true_for_valid_true_values/Value:_T
+=== RUN   TestGetBool/Return_false_for_valid_false_values
+=== RUN   TestGetBool/Return_false_for_valid_false_values/Value:_false
+=== RUN   TestGetBool/Return_false_for_valid_false_values/Value:_FALSE
+=== RUN   TestGetBool/Return_false_for_valid_false_values/Value:_False
+=== RUN   TestGetBool/Return_false_for_valid_false_values/Value:_0
+=== RUN   TestGetBool/Return_false_for_valid_false_values/Value:_f
+=== RUN   TestGetBool/Return_false_for_valid_false_values/Value:_F
+=== RUN   TestGetBool/Return_default_value_when_environment_variable_doesn't_exist
+=== RUN   TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean
+=== RUN   TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_yes
+=== RUN   TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_no
+=== RUN   TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_on
+=== RUN   TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_off
+=== RUN   TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_invalid
+=== RUN   TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_2
+=== RUN   TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_-1
+=== RUN   TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_
+--- PASS: TestGetBool (0.00s)
+    --- PASS: TestGetBool/Return_true_for_valid_true_values (0.00s)
+        --- PASS: TestGetBool/Return_true_for_valid_true_values/Value:_true (0.00s)
+        --- PASS: TestGetBool/Return_true_for_valid_true_values/Value:_TRUE (0.00s)
+        --- PASS: TestGetBool/Return_true_for_valid_true_values/Value:_True (0.00s)
+        --- PASS: TestGetBool/Return_true_for_valid_true_values/Value:_1 (0.00s)
+        --- PASS: TestGetBool/Return_true_for_valid_true_values/Value:_t (0.00s)
+        --- PASS: TestGetBool/Return_true_for_valid_true_values/Value:_T (0.00s)
+    --- PASS: TestGetBool/Return_false_for_valid_false_values (0.00s)
+        --- PASS: TestGetBool/Return_false_for_valid_false_values/Value:_false (0.00s)
+        --- PASS: TestGetBool/Return_false_for_valid_false_values/Value:_FALSE (0.00s)
+        --- PASS: TestGetBool/Return_false_for_valid_false_values/Value:_False (0.00s)
+        --- PASS: TestGetBool/Return_false_for_valid_false_values/Value:_0 (0.00s)
+        --- PASS: TestGetBool/Return_false_for_valid_false_values/Value:_f (0.00s)
+        --- PASS: TestGetBool/Return_false_for_valid_false_values/Value:_F (0.00s)
+    --- PASS: TestGetBool/Return_default_value_when_environment_variable_doesn't_exist (0.00s)
+    --- PASS: TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean (0.00s)
+        --- PASS: TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_yes (0.00s)
+        --- PASS: TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_no (0.00s)
+        --- PASS: TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_on (0.00s)
+        --- PASS: TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_off (0.00s)
+        --- PASS: TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_invalid (0.00s)
+        --- PASS: TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_2 (0.00s)
+        --- PASS: TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_-1 (0.00s)
+        --- PASS: TestGetBool/Panic_when_environment_variable_is_not_a_valid_boolean/Invalid_value:_ (0.00s)
+=== RUN   TestEnvironmentVariableIntegration
+=== RUN   TestEnvironmentVariableIntegration/Multiple_environment_variables
+=== RUN   TestEnvironmentVariableIntegration/Mix_of_existing_and_non-existing_variables
+--- PASS: TestEnvironmentVariableIntegration (0.00s)
+    --- PASS: TestEnvironmentVariableIntegration/Multiple_environment_variables (0.00s)
+    --- PASS: TestEnvironmentVariableIntegration/Mix_of_existing_and_non-existing_variables (0.00s)
+=== RUN   TestEdgeCases
+=== RUN   TestEdgeCases/Very_large_integer
+=== RUN   TestEdgeCases/Very_small_integer
+=== RUN   TestEdgeCases/Unicode_string
+=== RUN   TestEdgeCases/String_with_newlines_and_special_characters
+--- PASS: TestEdgeCases (0.00s)
+    --- PASS: TestEdgeCases/Very_large_integer (0.00s)
+    --- PASS: TestEdgeCases/Very_small_integer (0.00s)
+    --- PASS: TestEdgeCases/Unicode_string (0.00s)
+    --- PASS: TestEdgeCases/String_with_newlines_and_special_characters (0.00s)
+PASS
+coverage: 100.0% of statements
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/env	0.007s	coverage: 100.0% of statements
+=== RUN   TestGetUserClaimsFromToken
+=== RUN   TestGetUserClaimsFromToken/Successful_Parse_of_Valid_Token
+=== RUN   TestGetUserClaimsFromToken/Fail_on_Invalid_Signature
+=== RUN   TestGetUserClaimsFromToken/Successful_Parse_of_Expired_Token
+=== RUN   TestGetUserClaimsFromToken/Fail_on_Malformed_Token
+--- PASS: TestGetUserClaimsFromToken (0.00s)
+    --- PASS: TestGetUserClaimsFromToken/Successful_Parse_of_Valid_Token (0.00s)
+    --- PASS: TestGetUserClaimsFromToken/Fail_on_Invalid_Signature (0.00s)
+    --- PASS: TestGetUserClaimsFromToken/Successful_Parse_of_Expired_Token (0.00s)
+    --- PASS: TestGetUserClaimsFromToken/Fail_on_Malformed_Token (0.00s)
+PASS
+coverage: 69.6% of statements
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/jwt	0.012s	coverage: 69.6% of statements
+=== RUN   TestDecodeJSON
+=== RUN   TestDecodeJSON/Successful_JSON_decode
+=== RUN   TestDecodeJSON/Allow_unknown_fields_in_non-strict_mode
+=== RUN   TestDecodeJSON/Empty_body_error
+=== RUN   TestDecodeJSON/Malformed_JSON_syntax_error
+=== RUN   TestDecodeJSON/Unexpected_EOF_error
+=== RUN   TestDecodeJSON/Incorrect_JSON_type_error
+=== RUN   TestDecodeJSON/Multiple_JSON_values_error
+=== RUN   TestDecodeJSON/Request_body_too_large
+--- PASS: TestDecodeJSON (0.01s)
+    --- PASS: TestDecodeJSON/Successful_JSON_decode (0.00s)
+    --- PASS: TestDecodeJSON/Allow_unknown_fields_in_non-strict_mode (0.00s)
+    --- PASS: TestDecodeJSON/Empty_body_error (0.00s)
+    --- PASS: TestDecodeJSON/Malformed_JSON_syntax_error (0.00s)
+    --- PASS: TestDecodeJSON/Unexpected_EOF_error (0.00s)
+    --- PASS: TestDecodeJSON/Incorrect_JSON_type_error (0.00s)
+    --- PASS: TestDecodeJSON/Multiple_JSON_values_error (0.00s)
+    --- PASS: TestDecodeJSON/Request_body_too_large (0.01s)
+=== RUN   TestDecodeJSONStrict
+=== RUN   TestDecodeJSONStrict/Successful_JSON_decode_in_strict_mode
+=== RUN   TestDecodeJSONStrict/Disallow_unknown_fields_in_strict_mode
+--- PASS: TestDecodeJSONStrict (0.00s)
+    --- PASS: TestDecodeJSONStrict/Successful_JSON_decode_in_strict_mode (0.00s)
+    --- PASS: TestDecodeJSONStrict/Disallow_unknown_fields_in_strict_mode (0.00s)
+=== RUN   TestDecodeJSONWithNilPointer
+=== RUN   TestDecodeJSONWithNilPointer/Panic_on_invalid_unmarshal_target
+--- PASS: TestDecodeJSONWithNilPointer (0.00s)
+    --- PASS: TestDecodeJSONWithNilPointer/Panic_on_invalid_unmarshal_target (0.00s)
+=== RUN   TestDecodeJSONWithCustomReader
+=== RUN   TestDecodeJSONWithCustomReader/Handle_reader_error
+--- PASS: TestDecodeJSONWithCustomReader (0.00s)
+    --- PASS: TestDecodeJSONWithCustomReader/Handle_reader_error (0.00s)
+=== RUN   TestDecodeJSONEdgeCases
+=== RUN   TestDecodeJSONEdgeCases/JSON_with_only_whitespace
+=== RUN   TestDecodeJSONEdgeCases/Valid_JSON_with_trailing_whitespace
+=== RUN   TestDecodeJSONEdgeCases/JSON_array_instead_of_object
+--- PASS: TestDecodeJSONEdgeCases (0.00s)
+    --- PASS: TestDecodeJSONEdgeCases/JSON_with_only_whitespace (0.00s)
+    --- PASS: TestDecodeJSONEdgeCases/Valid_JSON_with_trailing_whitespace (0.00s)
+    --- PASS: TestDecodeJSONEdgeCases/JSON_array_instead_of_object (0.00s)
+PASS
+coverage: 96.0% of statements
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/request	0.016s	coverage: 96.0% of statements
+=== RUN   TestJSON
+=== RUN   TestJSON/Successful_JSON_response
+=== RUN   TestJSON/Error_JSON_response
+=== RUN   TestJSON/JSON_response_with_nil_data
+=== RUN   TestJSON/JSON_response_with_empty_strings
+--- PASS: TestJSON (0.00s)
+    --- PASS: TestJSON/Successful_JSON_response (0.00s)
+    --- PASS: TestJSON/Error_JSON_response (0.00s)
+    --- PASS: TestJSON/JSON_response_with_nil_data (0.00s)
+    --- PASS: TestJSON/JSON_response_with_empty_strings (0.00s)
+=== RUN   TestJSONWithHeaders
+=== RUN   TestJSONWithHeaders/JSON_response_with_custom_headers
+=== RUN   TestJSONWithHeaders/JSON_response_with_nil_headers
+=== RUN   TestJSONWithHeaders/JSON_response_with_empty_headers
+--- PASS: TestJSONWithHeaders (0.00s)
+    --- PASS: TestJSONWithHeaders/JSON_response_with_custom_headers (0.00s)
+    --- PASS: TestJSONWithHeaders/JSON_response_with_nil_headers (0.00s)
+    --- PASS: TestJSONWithHeaders/JSON_response_with_empty_headers (0.00s)
+=== RUN   TestJSONResponseStructure
+=== RUN   TestJSONResponseStructure/Verify_response_structure_for_success_case
+=== RUN   TestJSONResponseStructure/Verify_response_structure_for_error_case
+--- PASS: TestJSONResponseStructure (0.00s)
+    --- PASS: TestJSONResponseStructure/Verify_response_structure_for_success_case (0.00s)
+    --- PASS: TestJSONResponseStructure/Verify_response_structure_for_error_case (0.00s)
+=== RUN   TestJSONResponseEdgeCases
+=== RUN   TestJSONResponseEdgeCases/Response_with_complex_data_structure
+--- PASS: TestJSONResponseEdgeCases (0.00s)
+    --- PASS: TestJSONResponseEdgeCases/Response_with_complex_data_structure (0.00s)
+=== RUN   TestJSONResponseHeaders
+=== RUN   TestJSONResponseHeaders/Verify_Content-Type_header_is_always_set
+=== RUN   TestJSONResponseHeaders/Custom_headers_don't_override_Content-Type
+--- PASS: TestJSONResponseHeaders (0.00s)
+    --- PASS: TestJSONResponseHeaders/Verify_Content-Type_header_is_always_set (0.00s)
+    --- PASS: TestJSONResponseHeaders/Custom_headers_don't_override_Content-Type (0.00s)
+PASS
+coverage: 90.9% of statements
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/response	0.005s	coverage: 90.9% of statements
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/protos		coverage: 0.0% of statements
+	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/test_client		coverage: 0.0% of statements

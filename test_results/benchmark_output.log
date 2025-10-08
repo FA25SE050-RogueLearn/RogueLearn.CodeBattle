@@ -1,0 +1,46 @@
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/cmd/api	[no test files]
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/cmd/main	[no test files]
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/database	[no test files]
+goos: linux
+goarch: amd64
+pkg: github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/events
+cpu: Intel(R) Core(TM) Ultra 7 155H
+BenchmarkSolutionSubmittedCreation-22    	40742440	        27.51 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSseEventCreation-22             	1000000000	         0.1451 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/events	1.332s
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/executor	[no test files]
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/handler	[no test files]
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/hub	[no test files]
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/service	[no test files]
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/store	[no test files]
+goos: linux
+goarch: amd64
+pkg: github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/env
+cpu: Intel(R) Core(TM) Ultra 7 155H
+BenchmarkGetString-22             	45195459	        23.61 ns/op	       0 B/op	       0 allocs/op
+BenchmarkGetStringNotExists-22    	56720920	        20.03 ns/op	       0 B/op	       0 allocs/op
+BenchmarkGetInt-22                	41195836	        27.61 ns/op	       0 B/op	       0 allocs/op
+BenchmarkGetBool-22               	48283336	        24.92 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/env	5.597s
+PASS
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/jwt	0.006s
+goos: linux
+goarch: amd64
+pkg: github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/request
+cpu: Intel(R) Core(TM) Ultra 7 155H
+BenchmarkDecodeJSON-22          	  342458	      3536 ns/op	    6734 B/op	      26 allocs/op
+BenchmarkDecodeJSONStrict-22    	  330997	      3031 ns/op	    6734 B/op	      26 allocs/op
+PASS
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/request	2.303s
+goos: linux
+goarch: amd64
+pkg: github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/response
+cpu: Intel(R) Core(TM) Ultra 7 155H
+BenchmarkJSON-22               	 1651893	       761.5 ns/op	    1089 B/op	      10 allocs/op
+BenchmarkJSONWithHeaders-22    	 1227313	       935.4 ns/op	    1121 B/op	      10 allocs/op
+PASS
+ok  	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/response	4.142s
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/protos	[no test files]
+?   	github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/test_client	[no test files]
