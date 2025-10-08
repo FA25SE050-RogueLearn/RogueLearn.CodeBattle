@@ -13,8 +13,15 @@ func (app *Application) routes() http.Handler {
 	mux.Use(cors.AllowAll().Handler)
 
 	mux.Route("/events", func(r chi.Router) {
-		r.With(app.authMiddleware).Get("/{event_id}/leaderboard", app.handlers.GetEventLeaderboardEventHandler)
-		r.With(app.authMiddleware).Get("/{event_id}/rooms/{room_id}/leaderboard", app.handlers.GetRoomLeaderboardEventHandler)
+		// Public routes for events
+		r.Get("/", app.handlers.GetEventsHandler)
+		r.Get("/{event_id}/rooms", app.handlers.GetEventRoomsHandler)
+
+		// Auth-protected routes for event interaction
+		r.Get("/{event_id}/leaderboard", app.handlers.SpectateEventHandler)
+		r.Get("/{event_id}/rooms/{room_id}/leaderboard", app.handlers.JoinRoomHandler)
+		r.Post("/{event_id}/rooms/{room_id}/submit", app.handlers.SubmitSolutionHandler)
+		r.Get("/{event_id}/rooms/{room_id}/problems", app.handlers.GetRoomProblemsHandler)
 	})
 
 	return mux

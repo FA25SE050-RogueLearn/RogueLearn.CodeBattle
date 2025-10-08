@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -48,38 +49,38 @@ type RoomHub struct {
 }
 
 func NewEventHub(queries *store.Queries, logger *slog.Logger, worker *executor.WorkerPool) *EventHub {
-	// Initialize testing rooms for **DEVELOPMENT**
-	r1ID, err := uuid.Parse("e88e5761-e0fa-409d-baad-057edad1496a")
-	if err != nil {
-		panic(err) // remove on production
-	}
-	r2ID, err := uuid.Parse("f9d8c8af-c5dc-49d6-8c06-673d8129fd7c")
-	if err != nil {
-		panic(err) // remove on production
-	}
-
 	e := EventHub{
 		worker:  worker,
 		logger:  logger,
 		queries: queries,
+		Rooms:   make(map[uuid.UUID]*RoomHub),
+	}
+	// --------- remove on production ---------
+	beginnerArea, err := uuid.Parse("4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f90")
+	if err != nil {
+		panic(err)
+	}
+	advancedLobby, err := uuid.Parse("5e6f7a8b-9c0d-1e2f-3a4b-5c6d7e8f90a1")
+	if err != nil {
+		panic(err)
 	}
 
 	// remove on production
-	e.CreateRoom(r1ID, queries)
-	e.CreateRoom(r2ID, queries)
+	e.CreateRoom(beginnerArea, queries)
+	e.CreateRoom(advancedLobby, queries)
 
 	for _, r := range e.Rooms {
 		go r.Start()
 	}
-	// remove on production
+	// --------- remove on production ---------
 
 	return &e
 }
 
-func (gr *EventHub) GetRoomById(roomID uuid.UUID) *RoomHub {
-	gr.Mu.RLock()
-	defer gr.Mu.RUnlock()
-	return gr.Rooms[roomID]
+func (h *EventHub) GetRoomById(roomID uuid.UUID) *RoomHub {
+	h.Mu.RLock()
+	defer h.Mu.RUnlock()
+	return h.Rooms[roomID]
 }
 
 func (e *EventHub) CreateRoom(roomID uuid.UUID, queries *store.Queries) *RoomHub {
@@ -308,58 +309,61 @@ func combineCodeWithTemplate(templateCode, userCode, placeHolder string) string 
 }
 
 func (r *RoomHub) processSolutionResult(event events.SolutionResult) error {
-	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	// defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
 
 	r.logger.Info("processSoltuionResult() hit", "event", event)
 
-	// if e.Status != events.Accepted {
-	// 	r.logger.Info("solution failed", "event", event)
-	// 	sseEvent := events.SseEvent{
-	// 		EventType: events.WRONG_SOLUTION_SUBMITTED,
-	// 		Data:      fmt.Sprintf("status:%v,message:%v", e.Status, event.Message),
-	// 	}
+	if event.Status != events.Accepted {
+		r.logger.Info("solution failed", "event", event)
+		sseEvent := events.SseEvent{
+			EventType: events.WRONG_SOLUTION_SUBMITTED,
+			Data:      fmt.Sprintf("status:%v,message:%v", event.Status, event.Message),
+		}
 
-	// 	// send compilation error to the player
-	// 	go r.dispatchEventToPlayer(sseEvent, event.SolutionSubmitted.PlayerID)
+		// send compilation error to the player
+		go r.dispatchEventToPlayer(sseEvent, event.SolutionSubmitted.PlayerID)
 
-	// 	return nil
-	// }
+		return nil
+	}
 
-	// r.queries.UpdateRoomPlayerScore(ctx, store.UpdateRoomPlayerScoreParams{
-	// 	RoomID: toPgtypeUUID(event.SolutionSubmitted.RoomID),
-	// 	UserID: toPgtypeUUID(event.SolutionSubmitted.PlayerID),
-	// 	// Score: ,
-	// })
+	r.queries.UpdateRoomPlayerScore(ctx, store.UpdateRoomPlayerScoreParams{
+		RoomID: toPgtypeUUID(event.SolutionSubmitted.RoomID),
+		UserID: toPgtypeUUID(event.SolutionSubmitted.PlayerID),
+		// Score: ,
+	})
 
 	// Recalculate leaderboard after score update
-	// if err := r.calculateLeaderboard(ctx); err != nil {
-	// 	r.logger.Error("failed to calculate leaderboard after solution result", "error", err)
-	// 	// non-fatal, but should be monitored
-	// }
+	if err := r.calculateLeaderboard(ctx); err != nil {
+		r.logger.Error("failed to calculate leaderboard after solution result", "error", err)
+		// non-fatal, but should be monitored
+	}
 
-	// sseEvent := events.SseEvent{
-	// 	EventType: events.CORRECT_SOLUTION_SUBMITTED,
-	// 	Data:      "",
-	// }
+	sseEvent := events.SseEvent{
+		EventType: events.CORRECT_SOLUTION_SUBMITTED,
+		Data:      "",
+	}
 
 	// send event to the whole room
-	// go r.dispatchEvent(sseEvent)
+	go r.dispatchEvent(sseEvent)
 
 	return nil
 }
 
 // Helper method to check if player is in room
 func (r *RoomHub) playerInRoom(ctx context.Context, roomID, playerID uuid.UUID) bool {
-	_, err := r.queries.GetRoomPlayer(ctx, store.GetRoomPlayerParams{
+	player, err := r.queries.GetRoomPlayer(ctx, store.GetRoomPlayerParams{
 		RoomID: toPgtypeUUID(roomID),
 		UserID: toPgtypeUUID(playerID),
 	})
 
-	if err != nil {
-		r.logger.Error("failed to get room player", "error", err)
+	if err == sql.ErrNoRows {
+		r.logger.Error("no player found", "err", sql.ErrNoRows)
 		return false
 	}
+
+	r.logger.Info("player found", "player", player)
+
 	return true
 }
 
@@ -407,7 +411,7 @@ func (r *RoomHub) processPlayerJoined(event events.PlayerJoined) error {
 	ctx := context.Background()
 	// playerID is passed by the event
 	// playerID is parsed from the jwt token
-	if ok := !r.playerInRoom(ctx, event.RoomID, event.PlayerID); !ok {
+	if ok := r.playerInRoom(ctx, event.RoomID, event.PlayerID); !ok {
 		r.logger.Info("player is not in room, adding to room...",
 			"playerID", event.PlayerID,
 			"room", event.RoomID)

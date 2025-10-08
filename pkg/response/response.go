@@ -33,10 +33,7 @@ func JSONWithHeaders(w http.ResponseWriter, params JSONResponseParameters, heade
 		Success:      params.Success,
 		Message:      params.Msg,
 		ErrorMessage: params.ErrMsg,
-		Data:         nil,
-	}
-	if !response.Success {
-		response.Data = params.Data
+		Data:         params.Data,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -46,7 +46,7 @@ WITH ranked_players AS (
 UPDATE room_players rp
 SET place = rp_ranked.new_place
 FROM ranked_players rp_ranked
-WHERE rp.room_id = $1 AND rp.user_id = rp_ranked.player_id
+WHERE rp.room_id = $1 AND rp.user_id = rp_ranked.user_id
 `
 
 func (q *Queries) CalculateRoomLeaderboard(ctx context.Context, roomID pgtype.UUID) error {

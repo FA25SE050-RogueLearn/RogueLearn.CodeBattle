@@ -4,20 +4,28 @@ import (
 	"log/slog"
 	"sync"
 
-	handlers "github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/handler"
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/handlers"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/store"
-	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/jwt"
 )
 
 type Application struct {
-	wg        sync.WaitGroup
-	cfg       *Config
-	handlers  *handlers.HandlerRepo
-	logger    *slog.Logger
-	queries   *store.Queries
-	jwtParser *jwt.JWTParser
+	wg       sync.WaitGroup
+	cfg      *Config
+	handlers *handlers.HandlerRepo
+	logger   *slog.Logger
+	queries  *store.Queries
+}
+
+func NewApplication(cfg *Config, logger *slog.Logger, queries *store.Queries, handlerRepo *handlers.HandlerRepo) *Application {
+	return &Application{
+		cfg:      cfg,
+		logger:   logger,
+		queries:  queries,
+		handlers: handlerRepo,
+	}
 }
 
 type Config struct {
-	Port int
+	HttpPort int
+	GrpcPort int
 }

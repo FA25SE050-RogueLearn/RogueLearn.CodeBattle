@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>RogueLearn CodeBattle</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                margin: 20px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 1200px;
+                margin: auto;
+                background: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+            h1,
+            h2,
+            h3 {
+                color: #333;
+            }
+            .columns {
+                display: flex;
+                gap: 20px;
+            }
+            .col {
+                flex: 1;
+            }
+            #events,
+            #rooms,
+            #leaderboard,
+            #problem {
+                border: 1px solid #ddd;
+                padding: 15px;
+                border-radius: 5px;
+                min-height: 200px;
+            }
+            button {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 10px;
+            }
+            button:hover {
+                background-color: #0056b3;
+            }
+            ul {
+                list-style-type: none;
+                padding: 0;
+            }
+            li {
+                background: #eee;
+                margin-bottom: 5px;
+                padding: 10px;
+                border-radius: 3px;
+                cursor: pointer;
+            }
+            li:hover {
+                background: #ddd;
+            }
+            li.selected {
+                background-color: #007bff;
+                color: white;
+            }
+            textarea {
+                width: 100%;
+                box-sizing: border-box;
+                height: 200px;
+                margin-top: 10px;
+            }
+            #notifications {
+                margin-top: 20px;
+                border: 1px solid #ccc;
+                padding: 10px;
+                background-color: #f9f9f9;
+                max-height: 200px;
+                overflow-y: auto;
+            }
+            #submission-area {
+                margin-top: 15px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>RogueLearn CodeBattle Frontend</h1>
+
+            <div class="columns">
+                <div class="col">
+                    <h2>Events</h2>
+                    <div id="events">
+                        <ul id="events-list"></ul>
+                    </div>
+                </div>
+                <div class="col">
+                    <h2>Rooms</h2>
+                    <div id="rooms">
+                        <ul id="rooms-list"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="columns">
+                <div class="col">
+                    <h2>Leaderboard</h2>
+                    <div id="leaderboard">
+                        <ul id="leaderboard-list"></ul>
+                    </div>
+                </div>
+                <div class="col">
+                    <h2>Problems</h2>
+                    <div id="problem">
+                        <ul id="problems-list">
+                            <p>Select a room to see problems.</p>
+                        </ul>
+
+                        <div id="submission-area" style="display: none">
+                            <h3 id="selected-problem-title"></h3>
+                            <textarea
+                                id="code-editor"
+                                placeholder="Your code here..."
+                            ></textarea>
+                            <br />
+                            <select id="language-selector">
+                                <option value="go">Go</option>
+                                <option value="python">Python</option>
+                                <option value="javascript">JavaScript</option>
+                            </select>
+                            <button id="submit-code">Submit Solution</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="notifications">
+                <h2>Real-time Notifications</h2>
+                <ul id="notifications-list"></ul>
+            </div>
+        </div>
+
+        <script>
+            const API_BASE_URL = "http://localhost:8080";
+            const playerID = "11111111-1111-1111-1111-111111111111"; // Example player ID for dev
+
+            let eventSource = null;
+            let selectedEventId = null;
+            let selectedRoomId = null;
+            let selectedProblemId = null;
+
+            // --- Helper Functions ---
+            function clearSelection(list) {
+                list.querySelectorAll("li").forEach((item) =>
+                    item.classList.remove("selected"),
+                );
+            }
+
+            function logNotification(message) {
+                const notificationsList =
+                    document.getElementById("notifications-list");
+                const li = document.createElement("li");
+                li.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                notificationsList.appendChild(li);
+                notificationsList.scrollTop = notificationsList.scrollHeight; // Auto-scroll
+            }
+
+            // --- API Functions ---
+            async function getEvents() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/events`);
+                    const data = await response.json();
+                    const eventsList = document.getElementById("events-list");
+                    eventsList.innerHTML = "";
+                    if (data.data) {
+                        data.data.forEach((event) => {
+                            const li = document.createElement("li");
+                            li.textContent = event.Title;
+                            li.dataset.eventId = event.ID;
+                            li.addEventListener("click", () => {
+                                clearSelection(eventsList);
+                                li.classList.add("selected");
+                                selectedEventId = event.ID;
+
+                                // Reset downstream selections
+                                document.getElementById(
+                                    "rooms-list",
+                                ).innerHTML = "";
+                                document.getElementById(
+                                    "problems-list",
+                                ).innerHTML =
+                                    "<p>Select a room to see problems.</p>";
+                                document.getElementById(
+                                    "submission-area",
+                                ).style.display = "none";
+                                selectedRoomId = null;
+                                selectedProblemId = null;
+
+                                getRooms(event.ID);
+                            });
+                            eventsList.appendChild(li);
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error fetching events:", error);
+                    logNotification("Error fetching events.");
+                }
+            }
+
+            async function getRooms(eventId) {
+                try {
+                    const response = await fetch(
+                        `${API_BASE_URL}/events/${eventId}/rooms`,
+                    );
+                    const data = await response.json();
+                    const roomsList = document.getElementById("rooms-list");
+                    roomsList.innerHTML = "";
+                    if (data.data) {
+                        data.data.forEach((room) => {
+                            const li = document.createElement("li");
+                            li.textContent = room.Name;
+                            li.dataset.roomId = room.ID;
+                            li.addEventListener("click", () => {
+                                clearSelection(roomsList);
+                                li.classList.add("selected");
+                                selectedRoomId = room.ID;
+
+                                // Reset problem selection
+                                document.getElementById(
+                                    "submission-area",
+                                ).style.display = "none";
+                                selectedProblemId = null;
+
+                                joinRoom(eventId, room.ID);
+                                getProblems(eventId, room.ID);
+                            });
+                            roomsList.appendChild(li);
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error fetching rooms:", error);
+                    logNotification(
+                        `Error fetching rooms for event ${eventId}.`,
+                    );
+                }
+            }
+
+            async function getProblems(eventId, roomId) {
+                const problemsList = document.getElementById("problems-list");
+                problemsList.innerHTML = "<p>Loading problems...</p>";
+                try {
+                    const response = await fetch(
+                        `${API_BASE_URL}/events/${eventId}/rooms/${roomId}/problems`,
+                    );
+                    const data = await response.json();
+                    problemsList.innerHTML = "";
+                    if (data.data && data.data.length > 0) {
+                        data.data.forEach((problem) => {
+                            const li = document.createElement("li");
+                            li.textContent = `${problem.Title} (Score: ${problem.Score})`;
+                            li.dataset.problemId = problem.CodeProblemID;
+                            li.dataset.problemTitle = problem.Title;
+
+                            li.addEventListener("click", () => {
+                                clearSelection(problemsList);
+                                li.classList.add("selected");
+                                selectedProblemId = problem.CodeProblemID;
+
+                                document.getElementById(
+                                    "submission-area",
+                                ).style.display = "block";
+                                document.getElementById(
+                                    "selected-problem-title",
+                                ).textContent = `Solving: ${problem.Title}`;
+                            });
+                            problemsList.appendChild(li);
+                        });
+                    } else {
+                        problemsList.innerHTML =
+                            "<p>No problems found for this room.</p>";
+                    }
+                } catch (error) {
+                    console.error("Error fetching problems:", error);
+                    problemsList.innerHTML = "<p>Error fetching problems.</p>";
+                    logNotification(
+                        `Error fetching problems for room ${roomId}.`,
+                    );
+                }
+            }
+
+            function joinRoom(eventId, roomId) {
+                if (eventSource) {
+                    eventSource.close();
+                }
+
+                // The backend uses player_id from the query param for SSE connection
+                const url = `${API_BASE_URL}/events/${eventId}/rooms/${roomId}/leaderboard?player_id=${playerID}`;
+                eventSource = new EventSource(url);
+
+                eventSource.onopen = () => {
+                    logNotification(
+                        `SSE connection opened for room ${roomId}.`,
+                    );
+                };
+
+                eventSource.onerror = (error) => {
+                    console.error("EventSource failed:", error);
+                    logNotification("SSE connection error.");
+                    eventSource.close();
+                };
+
+                const eventTypes = [
+                    "CORRECT_SOLUTION_SUBMITTED",
+                    "WRONG_SOLUTION_SUBMITTED",
+                    "PLAYER_JOINED",
+                    "PLAYER_LEFT",
+                ];
+
+                eventTypes.forEach((type) => {
+                    eventSource.addEventListener(type, (event) => {
+                        const eventData = JSON.parse(event.data);
+                        logNotification(
+                            `Event: ${type}, Data: ${JSON.stringify(eventData.Data)}`,
+                        );
+                        // TODO: Update leaderboard UI based on events
+                    });
+                });
+            }
+
+            // --- Event Listeners ---
+            document
+                .getElementById("submit-code")
+                .addEventListener("click", async () => {
+                    const code = document.getElementById("code-editor").value;
+
+                    if (
+                        !selectedEventId ||
+                        !selectedRoomId ||
+                        !selectedProblemId
+                    ) {
+                        alert(
+                            "Please select an event, room, and problem first.",
+                        );
+                        return;
+                    }
+                    if (!code.trim()) {
+                        alert("Code editor cannot be empty.");
+                        return;
+                    }
+
+                    const language =
+                        document.getElementById("language-selector").value;
+
+                    // The backend uses player_id from the query param for submission
+                    const url = `${API_BASE_URL}/events/${selectedEventId}/rooms/${selectedRoomId}/submit?player_id=${playerID}`;
+
+                    try {
+                        const response = await fetch(url, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                // This auth token is for future use when middleware is applied
+                                Authorization: "Bearer your-jwt-token",
+                            },
+                            body: JSON.stringify({
+                                problem_id: selectedProblemId,
+                                code: code,
+                                language: language,
+                            }),
+                        });
+
+                        const result = await response.json();
+                        if (result.success) {
+                            alert("Solution submitted successfully!");
+                            logNotification(
+                                `Solution for problem ${selectedProblemId} submitted.`,
+                            );
+                        } else {
+                            alert("Submission failed: " + result.error_message);
+                            logNotification(
+                                `Submission failed: ${result.error_message}`,
+                            );
+                        }
+                    } catch (error) {
+                        console.error("Error submitting solution:", error);
+                        alert(
+                            "An error occurred while submitting your solution.",
+                        );
+                        logNotification("Error submitting solution.");
+                    }
+                });
+
+            document.addEventListener("DOMContentLoaded", getEvents);
+        </script>
+    </body>
+</html>
