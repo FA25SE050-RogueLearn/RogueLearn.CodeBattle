@@ -433,15 +433,15 @@ WHERE rp.room_id = $1 AND rp.user_id = rp_ranked.player_id;
 -- name: CalculateGuildLeaderboard :exec
 WITH ranked_guilds AS (
   SELECT
-    guild_id,
+    rg1.guild_id,
     RANK() OVER (ORDER BY total_score DESC) as new_place
-  FROM guild_leaderboard_entries
-  WHERE guild_id = $1 AND event_id= $2
+  FROM guild_leaderboard_entries rg1
+  WHERE rg1.guild_id = $1 AND rg1.event_id= $2
 )
 UPDATE guild_leaderboard_entries gl
 SET place = rg.new_place
-FROM ranked_guilds rg
-WHERE rp.room_id = $1 AND rp.user_id = rp_ranked.player_id;
+FROM ranked_guilds rg2
+WHERE gl.guild_id = rg2.guild_id AND gl.event_id = rg2.event_id;
 
 -- name: UpdateLeaderboardEntry :one
 UPDATE leaderboard_entries

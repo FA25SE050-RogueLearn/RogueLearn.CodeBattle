@@ -13,8 +13,8 @@ func (app *Application) routes() http.Handler {
 	mux.Use(cors.AllowAll().Handler)
 
 	mux.Route("/events", func(r chi.Router) {
-		r.Get("/{event_id}/leaderboard", app.handlers.GetEventLeaderboardEventHandler)
-		r.Get("/{event_id}/rooms/{room_id}/leaderboard", app.handlers.GetRoomLeaderboardEventHandler)
+		r.With(app.authMiddleware).Get("/{event_id}/leaderboard", app.handlers.GetEventLeaderboardEventHandler)
+		r.With(app.authMiddleware).Get("/{event_id}/rooms/{room_id}/leaderboard", app.handlers.GetRoomLeaderboardEventHandler)
 	})
 
 	return mux

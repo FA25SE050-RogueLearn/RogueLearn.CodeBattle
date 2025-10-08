@@ -57,10 +57,9 @@ func (hr *HandlerRepo) GetRoomLeaderboardEventHandler(w http.ResponseWriter, r *
 	}()
 
 	hr.logger.Info("SSE connection established", "player_id", playerID, "room_id", roomID)
+
 	// player joined event
-	go func() {
-		roomHub.Events <- events.PlayerJoined{PlayerID: playerID, RoomID: roomID}
-	}()
+	roomHub.Events <- events.PlayerJoined{PlayerID: playerID, RoomID: roomID}
 
 	for {
 		select {

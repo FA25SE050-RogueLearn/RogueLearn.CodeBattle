@@ -350,21 +350,21 @@ func (r *RoomHub) processSolutionResult(event events.SolutionResult) error {
 }
 
 // Helper method to check if player is in room
-func (r *RoomHub) playerInRoom(ctx context.Context, roomID, playerID uuid.UUID) (bool, error) {
+func (r *RoomHub) playerInRoom(ctx context.Context, roomID, playerID uuid.UUID) bool {
 	_, err := r.queries.GetRoomPlayer(ctx, store.GetRoomPlayerParams{
 		RoomID: toPgtypeUUID(roomID),
 		UserID: toPgtypeUUID(playerID),
 	})
+
 	if err != nil {
 		r.logger.Error("failed to get room player", "error", err)
-		return false, err
+		return false
 	}
-	return true, nil
+	return true
 }
 
 // Helper method to add player to room
 func (r *RoomHub) addPlayerToRoom(ctx context.Context, roomID, playerID uuid.UUID) error {
-	// place := r.queries.room
 	createParams := store.CreateRoomPlayerParams{
 		RoomID: toPgtypeUUID(roomID),
 		UserID: toPgtypeUUID(playerID),
@@ -392,11 +392,11 @@ func (r *RoomHub) calculateLeaderboard(ctx context.Context) error {
 
 	// Use the new, highly efficient single query to update all ranks.
 	// This avoids transactions in Go code and looping, pushing the logic to the database where it's most performant.
-	// err := r.queries.UpdateLeaderboardEntry()
-	// if err != nil {
-	// 	r.logger.Error("Failed to update player ranks via single query", "room_id", r.RoomID, "error", err)
-	// 	return err
-	// }
+	err := r.queries.CalculateRoomLeaderboard(ctx, toPgtypeUUID(r.RoomID))
+	if err != nil {
+		r.logger.Error("Failed to update player ranks via single query", "room_id", r.RoomID, "error", err)
+		return err
+	}
 
 	// r.logger.Info("Finished calculating leaderboard for room", "room_id", r.RoomID)
 	return nil
@@ -404,30 +404,26 @@ func (r *RoomHub) calculateLeaderboard(ctx context.Context) error {
 
 func (r *RoomHub) processPlayerJoined(event events.PlayerJoined) error {
 	// Process the player joined event
-	// Add player to room
-	// ctx := context.Background()
-	// player, err := r.queries.GetPlayer(ctx, event.PlayerID)
-	// if err != nil {
-	// 	return err
-	// }
+	ctx := context.Background()
+	// playerID is passed by the event
+	// playerID is parsed from the jwt token
+	if ok := !r.playerInRoom(ctx, event.RoomID, event.PlayerID); !ok {
+		r.logger.Info("player is not in room, adding to room...",
+			"playerID", event.PlayerID,
+			"room", event.RoomID)
+		err := r.addPlayerToRoom(ctx, event.RoomID, event.PlayerID)
+		if err != nil {
+			r.logger.Error("failed to add player to room", "error", err)
+			return err
+		}
+	}
 
-	// if !r.playerInRoom(ctx, event.RoomID, event.PlayerID) {
-	// 	r.logger.Info("player is not in room, adding to room...",
-	// 		"player", player,
-	// 		"room", event.RoomID)
-	// 	err := r.addPlayerToRoom(ctx, event.RoomID, player.ID)
-	// 	if err != nil {
-	// 		r.logger.Error("failed to add player to room", "error", err)
-	// 		return err
-	// 	}
-	// }
-
-	// // Recalculate leaderboard after a player joins
-	// err = r.calculateLeaderboard(ctx)
-	// if err != nil {
-	// 	r.logger.Error("failed to calculate leaderboard after player joined", "error", err)
-	// 	// This is not fatal to the join operation, but should be monitored.
-	// }
+	// Recalculate leaderboard after a player joins
+	err := r.calculateLeaderboard(ctx)
+	if err != nil {
+		r.logger.Error("failed to calculate leaderboard after player joined", "error", err)
+		// This is not fatal to the join operation, but should be monitored.
+	}
 
 	r.logger.Info("player joined", "event", event)
 

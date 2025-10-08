@@ -11,6 +11,49 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const calculateGuildLeaderboard = `-- name: CalculateGuildLeaderboard :exec
+WITH ranked_guilds AS (
+  SELECT
+    rg1.guild_id,
+    RANK() OVER (ORDER BY total_score DESC) as new_place
+  FROM guild_leaderboard_entries rg1
+  WHERE rg1.guild_id = $1 AND rg1.event_id= $2
+)
+UPDATE guild_leaderboard_entries gl
+SET place = rg.new_place
+FROM ranked_guilds rg2
+WHERE gl.guild_id = rg2.guild_id AND gl.event_id = rg2.event_id
+`
+
+type CalculateGuildLeaderboardParams struct {
+	GuildID pgtype.UUID
+	EventID pgtype.UUID
+}
+
+func (q *Queries) CalculateGuildLeaderboard(ctx context.Context, arg CalculateGuildLeaderboardParams) error {
+	_, err := q.db.Exec(ctx, calculateGuildLeaderboard, arg.GuildID, arg.EventID)
+	return err
+}
+
+const calculateRoomLeaderboard = `-- name: CalculateRoomLeaderboard :exec
+WITH ranked_players AS (
+  SELECT
+    user_id,
+    RANK() OVER (ORDER BY score DESC) as new_place
+  FROM room_players
+  WHERE room_id = $1
+)
+UPDATE room_players rp
+SET place = rp_ranked.new_place
+FROM ranked_players rp_ranked
+WHERE rp.room_id = $1 AND rp.user_id = rp_ranked.player_id
+`
+
+func (q *Queries) CalculateRoomLeaderboard(ctx context.Context, roomID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, calculateRoomLeaderboard, roomID)
+	return err
+}
+
 const createCodeProblem = `-- name: CreateCodeProblem :one
 INSERT INTO code_problems (title, problem_statement, difficulty)
 VALUES ($1, $2, $3)
