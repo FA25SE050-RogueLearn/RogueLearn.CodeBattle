@@ -3,6 +3,7 @@ package handlers
 import (
 	"log/slog"
 
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/hub"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/store"
 )
 
@@ -10,8 +11,9 @@ import (
 // This includes the application logger, services like the RoomManager,
 // and the centralized store for data access.
 type HandlerRepo struct {
-	logger  *slog.Logger
-	queries *store.Queries
+	eventHub *hub.EventHub
+	logger   *slog.Logger
+	queries  *store.Queries
 }
 
 // NewHandlerRepo creates a new HandlerRepo with the provided dependencies.

@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	pb "github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/api"
+	pb "github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/protos"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -24,7 +24,7 @@ func main() {
 	defer cancel()
 
 	req := &pb.GetEventsRequest{
-		Pagination: &pb.Pagination{
+		PaginationRequest: &pb.PaginationRequest{
 			PageSize:  10,
 			PageIndex: 1,
 		},

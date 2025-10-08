@@ -55,6 +55,53 @@ func (ns NullEventType) Value() (driver.Value, error) {
 	return string(ns.EventType), nil
 }
 
+type SubmissionStatus string
+
+const (
+	SubmissionStatusEventUnspecified SubmissionStatus = "event_unspecified"
+	SubmissionStatusPending          SubmissionStatus = "pending"
+	SubmissionStatusAccepted         SubmissionStatus = "accepted"
+	SubmissionStatusWrongAnswer      SubmissionStatus = "wrong_answer"
+	SubmissionStatusLimitExceed      SubmissionStatus = "limit_exceed"
+	SubmissionStatusRuntimeError     SubmissionStatus = "runtime_error"
+	SubmissionStatusCompilationError SubmissionStatus = "compilation_error"
+)
+
+func (e *SubmissionStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SubmissionStatus(s)
+	case string:
+		*e = SubmissionStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SubmissionStatus: %T", src)
+	}
+	return nil
+}
+
+type NullSubmissionStatus struct {
+	SubmissionStatus SubmissionStatus
+	Valid            bool // Valid is true if SubmissionStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSubmissionStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.SubmissionStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SubmissionStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSubmissionStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SubmissionStatus), nil
+}
+
 type CodeProblem struct {
 	ID               pgtype.UUID
 	Title            string
@@ -148,7 +195,7 @@ type Submission struct {
 	LanguageID       pgtype.UUID
 	RoomID           pgtype.UUID
 	CodeSubmitted    string
-	Status           string
+	Status           SubmissionStatus
 	ExecutionTimeMs  pgtype.Int4
 	SubmittedAt      pgtype.Timestamptz
 	SubmittedGuildID pgtype.UUID
@@ -163,7 +210,7 @@ type Tag struct {
 type TestCase struct {
 	ID             pgtype.UUID
 	CodeProblemID  pgtype.UUID
-	Input          []byte
-	ExpectedOutput []byte
+	Input          string
+	ExpectedOutput string
 	IsHidden       bool
 }

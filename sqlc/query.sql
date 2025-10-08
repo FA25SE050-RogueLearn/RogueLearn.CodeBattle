@@ -417,6 +417,32 @@ AND le1.snapshot_date = (
 )
 ORDER BY le1.rank ASC;
 
+-- name: CalculateRoomLeaderboard :exec
+WITH ranked_players AS (
+  SELECT
+    user_id,
+    RANK() OVER (ORDER BY score DESC) as new_place
+  FROM room_players
+  WHERE room_id = $1
+)
+UPDATE room_players rp
+SET place = rp_ranked.new_place
+FROM ranked_players rp_ranked
+WHERE rp.room_id = $1 AND rp.user_id = rp_ranked.player_id;
+
+-- name: CalculateGuildLeaderboard :exec
+WITH ranked_guilds AS (
+  SELECT
+    guild_id,
+    RANK() OVER (ORDER BY total_score DESC) as new_place
+  FROM guild_leaderboard_entries
+  WHERE guild_id = $1 AND event_id= $2
+)
+UPDATE guild_leaderboard_entries gl
+SET place = rg.new_place
+FROM ranked_guilds rg
+WHERE rp.room_id = $1 AND rp.user_id = rp_ranked.player_id;
+
 -- name: UpdateLeaderboardEntry :one
 UPDATE leaderboard_entries
 SET rank = $3, score = $4

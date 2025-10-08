@@ -2,6 +2,8 @@ package events
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type EventType string
@@ -34,9 +36,10 @@ const (
 )
 
 type SolutionSubmitted struct {
-	PlayerId      int32
-	RoomId        int32
-	QuestionId    int32
+	PlayerID      uuid.UUID
+	EventID       uuid.UUID
+	RoomID        uuid.UUID
+	ProblemID     uuid.UUID
 	Code          string
 	Language      string
 	SubmittedTime time.Time
@@ -44,24 +47,25 @@ type SolutionSubmitted struct {
 
 type SolutionResult struct {
 	SolutionSubmitted SolutionSubmitted
+	Score             int
 	Status            JudgeStatus
 	Message           string
 }
 
 type LeaderboardUpdated struct {
-	RoomId int
+	RoomID uuid.UUID
 }
 
 type PlayerJoined struct {
-	PlayerID int32
-	RoomID   int32
+	PlayerID uuid.UUID
+	RoomID   uuid.UUID
 }
 
 type PlayerLeft struct {
-	PlayerId int32
-	RoomId   int32
+	PlayerID uuid.UUID
+	RoomID   uuid.UUID
 }
 
 type RoomDeleted struct {
-	RoomId int32
+	RoomID uuid.UUID
 }

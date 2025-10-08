@@ -6,29 +6,19 @@ import (
 	"log/slog"
 	"net"
 	"os"
-	"sync"
 
-	pb "github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/api"
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/cmd/api"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/database"
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/protos"
 	"google.golang.org/grpc"
 
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/service"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/store"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/env"
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/jwt"
 	"github.com/joho/godotenv"
 	"github.com/lmittmann/tint"
 )
-
-type Application struct {
-	wg      sync.WaitGroup
-	cfg     *Config
-	logger  *slog.Logger
-	queries *store.Queries
-}
-
-type Config struct {
-	Port int
-}
 
 func main() {
 	err := godotenv.Load()
@@ -41,7 +31,7 @@ func main() {
 	// 	log.Fatal("DATABASE_URL not found")
 	// }
 
-	cfg := &Config{Port: 8080}
+	cfg := &api.Config{Port: 8080}
 
 	// test area
 	connStr := env.GetString("SUPABASE_DB_CONNECTION_STRING", "")
@@ -80,13 +70,25 @@ func main() {
 	// 	queries: queries,
 	// }
 
+	token := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE3NTk4NTYwMjEsImV4cCI6MTc5MTM5MjAyMSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsImlkIjoiSm9obm55IiwidXNlcm5hbWUiOiJqb25oeXNpbnMiLCJlbWFpbCI6Impyb2NrZXRAZXhhbXBsZS5jb20iLCJyb2xlIjpbIk1hbmFnZXIiLCJQcm9qZWN0IEFkbWluaXN0cmF0b3IiXX0.WaZwRkpgCxIYSqEfv8SD2Q3TlXsJRJiaMStlbJfDDos"
+	secKey := "qwertyuiopasdfghjklzxcvbnm123456"
+	jwtParser := jwt.NewJWTParser(secKey, logger)
+	claims, err := jwtParser.GetUserClaimsFromToken(token)
+	if err != nil {
+		logger.Error("Failed to parse jwt, exiting application...", "err", err)
+		panic(err)
+	}
+
+	logger.Info("Parsed successfully!", "claims", claims)
+
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", cfg.Port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	pb.RegisterCodeBattleServiceServer(grpcServer, service.NewCodeBattleServer(queries, logger))
+	protos.RegisterCodeBattleServiceServer(grpcServer, service.NewCodeBattleServer(queries, logger))
+
 	grpcServer.Serve(lis)
 
 	// err = app.run()

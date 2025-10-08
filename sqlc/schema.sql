@@ -1,5 +1,12 @@
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
+CREATE TYPE submission_status AS ENUM (
+  'event_unspecified',
+  'pending',
+  'accepted',
+  'wrong_answer',
+  'limit_exceed',
+  'runtime_error',
+  'compilation_error'
+);
 
 CREATE TYPE event_type AS ENUM (
     'code_battle',
@@ -113,7 +120,7 @@ CREATE TABLE public.submissions (
   language_id uuid NOT NULL,
   room_id uuid NOT NULL,
   code_submitted text NOT NULL DEFAULT ''::text,
-  status text NOT NULL,
+  status submission_status NOT NULL,
   execution_time_ms integer,
   submitted_at timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'::text),
   submitted_guild_id uuid NOT NULL,
@@ -131,8 +138,8 @@ CREATE TABLE public.tags (
 CREATE TABLE public.test_cases (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   code_problem_id uuid NOT NULL,
-  input json NOT NULL,
-  expected_output json NOT NULL,
+  input text NOT NULL,
+  expected_output text NOT NULL,
   is_hidden boolean NOT NULL DEFAULT true,
   CONSTRAINT test_cases_pkey PRIMARY KEY (id),
   CONSTRAINT test_cases_code_problem_id_fkey FOREIGN KEY (code_problem_id) REFERENCES public.code_problems(id)

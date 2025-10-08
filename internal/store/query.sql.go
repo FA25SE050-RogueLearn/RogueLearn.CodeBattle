@@ -331,7 +331,7 @@ type CreateSubmissionParams struct {
 	LanguageID       pgtype.UUID
 	RoomID           pgtype.UUID
 	CodeSubmitted    string
-	Status           string
+	Status           SubmissionStatus
 	ExecutionTimeMs  pgtype.Int4
 	SubmittedGuildID pgtype.UUID
 }
@@ -386,8 +386,8 @@ RETURNING id, code_problem_id, input, expected_output, is_hidden
 
 type CreateTestCaseParams struct {
 	CodeProblemID  pgtype.UUID
-	Input          []byte
-	ExpectedOutput []byte
+	Input          string
+	ExpectedOutput string
 	IsHidden       bool
 }
 
@@ -1867,7 +1867,7 @@ type GetSubmissionsByGuildRow struct {
 	LanguageID       pgtype.UUID
 	RoomID           pgtype.UUID
 	CodeSubmitted    string
-	Status           string
+	Status           SubmissionStatus
 	ExecutionTimeMs  pgtype.Int4
 	SubmittedAt      pgtype.Timestamptz
 	SubmittedGuildID pgtype.UUID
@@ -1923,7 +1923,7 @@ type GetSubmissionsByProblemRow struct {
 	LanguageID       pgtype.UUID
 	RoomID           pgtype.UUID
 	CodeSubmitted    string
-	Status           string
+	Status           SubmissionStatus
 	ExecutionTimeMs  pgtype.Int4
 	SubmittedAt      pgtype.Timestamptz
 	SubmittedGuildID pgtype.UUID
@@ -1978,7 +1978,7 @@ type GetSubmissionsByRoomRow struct {
 	LanguageID       pgtype.UUID
 	RoomID           pgtype.UUID
 	CodeSubmitted    string
-	Status           string
+	Status           SubmissionStatus
 	ExecutionTimeMs  pgtype.Int4
 	SubmittedAt      pgtype.Timestamptz
 	SubmittedGuildID pgtype.UUID
@@ -2035,7 +2035,7 @@ type GetSubmissionsByStatusRow struct {
 	LanguageID       pgtype.UUID
 	RoomID           pgtype.UUID
 	CodeSubmitted    string
-	Status           string
+	Status           SubmissionStatus
 	ExecutionTimeMs  pgtype.Int4
 	SubmittedAt      pgtype.Timestamptz
 	SubmittedGuildID pgtype.UUID
@@ -2043,7 +2043,7 @@ type GetSubmissionsByStatusRow struct {
 	LanguageName     string
 }
 
-func (q *Queries) GetSubmissionsByStatus(ctx context.Context, status string) ([]GetSubmissionsByStatusRow, error) {
+func (q *Queries) GetSubmissionsByStatus(ctx context.Context, status SubmissionStatus) ([]GetSubmissionsByStatusRow, error) {
 	rows, err := q.db.Query(ctx, getSubmissionsByStatus, status)
 	if err != nil {
 		return nil, err
@@ -2092,7 +2092,7 @@ type GetSubmissionsByUserRow struct {
 	LanguageID       pgtype.UUID
 	RoomID           pgtype.UUID
 	CodeSubmitted    string
-	Status           string
+	Status           SubmissionStatus
 	ExecutionTimeMs  pgtype.Int4
 	SubmittedAt      pgtype.Timestamptz
 	SubmittedGuildID pgtype.UUID
@@ -2611,7 +2611,7 @@ RETURNING id, user_id, code_problem_id, language_id, room_id, code_submitted, st
 
 type UpdateSubmissionStatusParams struct {
 	ID              pgtype.UUID
-	Status          string
+	Status          SubmissionStatus
 	ExecutionTimeMs pgtype.Int4
 }
 
@@ -2661,8 +2661,8 @@ RETURNING id, code_problem_id, input, expected_output, is_hidden
 
 type UpdateTestCaseParams struct {
 	ID             pgtype.UUID
-	Input          []byte
-	ExpectedOutput []byte
+	Input          string
+	ExpectedOutput string
 	IsHidden       bool
 }
 

@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.32.0
-// source: api/proto/code_battle.proto
+// source: code_battle.proto
 
-package api
+package protos
 
 import (
 	context "context"
@@ -19,7 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	CodeBattleService_GetEvents_FullMethodName = "/code_battle.CodeBattleService/GetEvents"
+	CodeBattleService_GetEvents_FullMethodName          = "/code_battle.CodeBattleService/GetEvents"
+	CodeBattleService_SubmitCodeSolution_FullMethodName = "/code_battle.CodeBattleService/SubmitCodeSolution"
+	CodeBattleService_GetUserSubmissions_FullMethodName = "/code_battle.CodeBattleService/GetUserSubmissions"
 )
 
 // CodeBattleServiceClient is the client API for CodeBattleService service.
@@ -27,6 +29,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CodeBattleServiceClient interface {
 	GetEvents(ctx context.Context, in *GetEventsRequest, opts ...grpc.CallOption) (*GetEventsResponse, error)
+	SubmitCodeSolution(ctx context.Context, in *SubmitCodeSolutionRequest, opts ...grpc.CallOption) (*SubmitCodeSolutionResponse, error)
+	GetUserSubmissions(ctx context.Context, in *GetUserSubmissionsRequest, opts ...grpc.CallOption) (*GetUserSubmissionsResponse, error)
 }
 
 type codeBattleServiceClient struct {
@@ -47,11 +51,33 @@ func (c *codeBattleServiceClient) GetEvents(ctx context.Context, in *GetEventsRe
 	return out, nil
 }
 
+func (c *codeBattleServiceClient) SubmitCodeSolution(ctx context.Context, in *SubmitCodeSolutionRequest, opts ...grpc.CallOption) (*SubmitCodeSolutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubmitCodeSolutionResponse)
+	err := c.cc.Invoke(ctx, CodeBattleService_SubmitCodeSolution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *codeBattleServiceClient) GetUserSubmissions(ctx context.Context, in *GetUserSubmissionsRequest, opts ...grpc.CallOption) (*GetUserSubmissionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserSubmissionsResponse)
+	err := c.cc.Invoke(ctx, CodeBattleService_GetUserSubmissions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CodeBattleServiceServer is the server API for CodeBattleService service.
 // All implementations must embed UnimplementedCodeBattleServiceServer
 // for forward compatibility.
 type CodeBattleServiceServer interface {
 	GetEvents(context.Context, *GetEventsRequest) (*GetEventsResponse, error)
+	SubmitCodeSolution(context.Context, *SubmitCodeSolutionRequest) (*SubmitCodeSolutionResponse, error)
+	GetUserSubmissions(context.Context, *GetUserSubmissionsRequest) (*GetUserSubmissionsResponse, error)
 	mustEmbedUnimplementedCodeBattleServiceServer()
 }
 
@@ -64,6 +90,12 @@ type UnimplementedCodeBattleServiceServer struct{}
 
 func (UnimplementedCodeBattleServiceServer) GetEvents(context.Context, *GetEventsRequest) (*GetEventsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEvents not implemented")
+}
+func (UnimplementedCodeBattleServiceServer) SubmitCodeSolution(context.Context, *SubmitCodeSolutionRequest) (*SubmitCodeSolutionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SubmitCodeSolution not implemented")
+}
+func (UnimplementedCodeBattleServiceServer) GetUserSubmissions(context.Context, *GetUserSubmissionsRequest) (*GetUserSubmissionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserSubmissions not implemented")
 }
 func (UnimplementedCodeBattleServiceServer) mustEmbedUnimplementedCodeBattleServiceServer() {}
 func (UnimplementedCodeBattleServiceServer) testEmbeddedByValue()                           {}
@@ -104,6 +136,42 @@ func _CodeBattleService_GetEvents_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CodeBattleService_SubmitCodeSolution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitCodeSolutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CodeBattleServiceServer).SubmitCodeSolution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CodeBattleService_SubmitCodeSolution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CodeBattleServiceServer).SubmitCodeSolution(ctx, req.(*SubmitCodeSolutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CodeBattleService_GetUserSubmissions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserSubmissionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CodeBattleServiceServer).GetUserSubmissions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CodeBattleService_GetUserSubmissions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CodeBattleServiceServer).GetUserSubmissions(ctx, req.(*GetUserSubmissionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CodeBattleService_ServiceDesc is the grpc.ServiceDesc for CodeBattleService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -115,7 +183,15 @@ var CodeBattleService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetEvents",
 			Handler:    _CodeBattleService_GetEvents_Handler,
 		},
+		{
+			MethodName: "SubmitCodeSolution",
+			Handler:    _CodeBattleService_SubmitCodeSolution_Handler,
+		},
+		{
+			MethodName: "GetUserSubmissions",
+			Handler:    _CodeBattleService_GetUserSubmissions_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/proto/code_battle.proto",
+	Metadata: "code_battle.proto",
 }
