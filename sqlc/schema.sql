@@ -101,6 +101,7 @@ CREATE TABLE public.room_players (
   place integer,
   state text DEFAULT ''::text,
   disconnected_at timestamp with time zone,
+  joined_at timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'::text),
   CONSTRAINT room_players_pkey PRIMARY KEY (room_id, user_id),
   CONSTRAINT room_players_room_id_fkey FOREIGN KEY (room_id) REFERENCES public.rooms(id)
 );

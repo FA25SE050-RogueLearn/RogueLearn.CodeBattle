@@ -186,6 +186,7 @@ type RoomPlayer struct {
 	Place          pgtype.Int4
 	State          pgtype.Text
 	DisconnectedAt pgtype.Timestamptz
+	JoinedAt       pgtype.Timestamptz
 }
 
 type Submission struct {

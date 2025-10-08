@@ -421,7 +421,7 @@ ORDER BY le1.rank ASC;
 WITH ranked_players AS (
   SELECT
     user_id,
-    RANK() OVER (ORDER BY score DESC) as new_place
+    RANK() OVER (ORDER BY score DESC, joined_at ASC) as new_place
   FROM room_players
   WHERE room_id = $1
 )
