@@ -5,8 +5,8 @@ import (
 )
 
 // NormalizeLanguage returns the standard name for the input progrmaming language
-func NormalizeLanguage(lang string) string {
-
+func NormalizeLanguage(lang string) (name string, found bool) {
+	found = true
 	lang = strings.ToLower(lang)
 
 	languageMap := map[string]string{
@@ -39,8 +39,8 @@ func NormalizeLanguage(lang string) string {
 	}
 
 	if normalized, ok := languageMap[lang]; ok {
-		return normalized
+		return normalized, found
 	}
 
-	return lang
+	return lang, !found
 }

@@ -24,5 +24,11 @@ func (app *Application) routes() http.Handler {
 		r.Get("/{event_id}/rooms/{room_id}/problems", app.handlers.GetRoomProblemsHandler)
 	})
 
+	mux.Route("/problems", func(r chi.Router) {
+		// Public routes for events
+
+		// Auth-protected routes for event interaction
+		r.Get("/{problem_id}/details", app.handlers.GetProblemDetails)
+	})
 	return mux
 }

@@ -4,10 +4,15 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/executor"
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/store"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/response"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
+
+type CodeProblemResponse struct {
+}
 
 func (hr *HandlerRepo) GetRoomProblemsHandler(w http.ResponseWriter, r *http.Request) {
 	roomIDStr := chi.URLParam(r, "event_id")
@@ -35,6 +40,44 @@ func (hr *HandlerRepo) GetRoomProblemsHandler(w http.ResponseWriter, r *http.Req
 		Success: true,
 		Msg:     "get code problems successfully",
 		Data:    cps,
+	})
+	if err != nil {
+		hr.logger.Error("failed to parse json", "err", err)
+		hr.serverError(w, r, err)
+	}
+}
+
+func (hr *HandlerRepo) GetProblemDetails(w http.ResponseWriter, r *http.Request) {
+	problemIDStr := chi.URLParam(r, "problem_id")
+	problemID, err := uuid.Parse(problemIDStr)
+	if err != nil {
+		hr.badRequest(w, r, err)
+		return
+	}
+
+	normalizedLang, found := executor.NormalizeLanguage(r.URL.Query().Get("lang"))
+	if !found {
+		hr.logger.Warn("lang not found")
+		hr.notFound(w, r)
+		return
+	}
+
+	detail, err := hr.queries.GetCodeProblemLanguageDetailByLanguageName(r.Context(), store.GetCodeProblemLanguageDetailByLanguageNameParams{
+		CodeProblemID: toPgtypeUUID(problemID),
+		Name:          normalizedLang,
+	})
+
+	if err != nil {
+		hr.logger.Error("failed to get code problem language detail", "err", err)
+		hr.serverError(w, r, err)
+		return
+	}
+
+	err = response.JSON(w, response.JSONResponseParameters{
+		Status:  http.StatusOK,
+		Success: true,
+		Msg:     "get code problem language detail successfully",
+		Data:    detail,
 	})
 	if err != nil {
 		hr.logger.Error("failed to parse json", "err", err)

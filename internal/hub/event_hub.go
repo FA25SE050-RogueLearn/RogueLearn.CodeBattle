@@ -3,6 +3,7 @@ package hub
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -34,6 +35,7 @@ type EventHub struct {
 	Rooms         map[uuid.UUID]*RoomHub
 	Mu            sync.RWMutex
 	leaderboardMu sync.Mutex // Protects leaderboard calculation
+	codeBuilder   executor.CodeBuilder
 }
 
 type RoomHub struct {
@@ -49,12 +51,15 @@ type RoomHub struct {
 }
 
 func NewEventHub(queries *store.Queries, logger *slog.Logger, worker *executor.WorkerPool) *EventHub {
+	pkgAnalyzer := executor.NewGoPackageAnalyzer()
 	e := EventHub{
-		worker:  worker,
-		logger:  logger,
-		queries: queries,
-		Rooms:   make(map[uuid.UUID]*RoomHub),
+		worker:      worker,
+		logger:      logger,
+		queries:     queries,
+		Rooms:       make(map[uuid.UUID]*RoomHub),
+		codeBuilder: executor.NewCodeBuilder([]executor.PackageAnalyzer{pkgAnalyzer}, logger),
 	}
+
 	// --------- remove on production ---------
 	beginnerArea, err := uuid.Parse("4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f90")
 	if err != nil {
@@ -84,7 +89,7 @@ func (h *EventHub) GetRoomById(roomID uuid.UUID) *RoomHub {
 }
 
 func (e *EventHub) CreateRoom(roomID uuid.UUID, queries *store.Queries) *RoomHub {
-	r := newRoomHub(roomID, queries, e.worker)
+	r := newRoomHub(roomID, queries, e.worker, e.logger, e.codeBuilder)
 	e.Mu.Lock()
 	e.Rooms[roomID] = r
 	e.Mu.Unlock()
@@ -92,23 +97,23 @@ func (e *EventHub) CreateRoom(roomID uuid.UUID, queries *store.Queries) *RoomHub
 	return r
 }
 
-func newRoomHub(roomId uuid.UUID, queries *store.Queries, worker *executor.WorkerPool) *RoomHub {
-	pkgAnalyzer := executor.NewGoPackageAnalyzer()
+func newRoomHub(roomId uuid.UUID, queries *store.Queries, worker *executor.WorkerPool, logger *slog.Logger, codeBuilder executor.CodeBuilder) *RoomHub {
 	return &RoomHub{
 		RoomID:        roomId,
 		Events:        make(chan any, 10),
 		Listerners:    make(map[uuid.UUID]chan<- events.SseEvent),
-		codeBuilder:   executor.NewCodeBuilder(pkgAnalyzer),
-		logger:        slog.Default(),
+		logger:        logger,
 		queries:       queries,
 		Mu:            sync.RWMutex{},
 		leaderboardMu: sync.Mutex{}, // Initialize the new mutex
 		worker:        worker,
+		codeBuilder:   codeBuilder,
 	}
 }
 
 // Start will start to listen and serve events to players connected to the room
 func (r *RoomHub) Start() {
+	r.logger.Info("check init", "code_builder", r.codeBuilder)
 	for event := range r.Events {
 		switch e := event.(type) {
 		case events.SolutionSubmitted:
@@ -227,7 +232,11 @@ func (r *RoomHub) processSolutionSubmitted(event events.SolutionSubmitted) error
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultQueryTimeoutSecond)
 	defer cancel()
 
-	normalizedLang := executor.NormalizeLanguage(event.Language)
+	normalizedLang, found := executor.NormalizeLanguage(event.Language)
+	if !found {
+		r.logger.Warn("lang not found")
+		return errors.New("language not found")
+	}
 
 	lang, err := r.queries.GetLanguageByName(ctx, normalizedLang)
 	if err != nil {
@@ -252,54 +261,43 @@ func (r *RoomHub) processSolutionSubmitted(event events.SolutionSubmitted) error
 	// combine problem's driver code with user's code
 	finalCode, err := r.codeBuilder.Build(normalizedLang, problem.DriverCode, event.Code)
 	if err != nil {
+		r.logger.Error("failed to build code", "err", err)
 		return err
 	}
 
 	r.logger.Info("Code built successfully", "final_code", finalCode)
 
-	// TODO: Execute Job with input (test cases)
-	// i for test cases number
-	for i, tc := range testCases {
-		r.logger.Info("Testing...", "test_case", tc)
-		result := r.worker.ExecuteJob(lang, finalCode, &tc.Input)
-		if result.Error != nil {
-			r.Events <- events.SolutionResult{
-				SolutionSubmitted: event,
-				Status:            events.RuntimeError,
-				Message:           result.Output,
-			}
+	result := r.worker.ExecuteJob(lang, finalCode, testCases)
 
-			// This error is the user solution's fault, so we don't return it
-			return nil
-		}
-
-		// TODO: Compare output
-		actualOutput := strings.TrimSpace(result.Output)
-		expectedOutput := strings.TrimSpace(tc.ExpectedOutput)
-		if actualOutput != expectedOutput {
-			message := fmt.Sprintf("Input:%v, Expected Output:%v, Actual Output: %v", tc.Input, tc.ExpectedOutput, result.Output)
-			r.logger.Warn("Output not match", "message", message)
-			r.Events <- events.SolutionResult{
-				SolutionSubmitted: event,
-				Status:            events.WrongAnswer,
-				Message:           message,
-			}
-
-			// This error is the user solution's fault, so we don't return it
-			return nil
-		}
-		r.logger.Info("placeholder:%v", "i", i)
-	}
-
-	// eventCP, err := r.queries.GetEventCodeProblem(ctx, store.GetEventCodeProblemParams{})
-	// r.Events <- events.SolutionResult{
-	// 	SolutionSubmitted: event,
-	// 	// Score: ,
-	// 	Status:  events.Accepted,
-	// 	Message: "Solution accepted",
-	// }
+	solutionResult := generateSolutionResult(event, result)
+	r.Events <- solutionResult
 
 	return nil
+}
+
+func generateSolutionResult(solutionSubmitted events.SolutionSubmitted, jobResult executor.Result) events.SolutionResult {
+	var solutionResult *events.SolutionResult = &events.SolutionResult{
+		SolutionSubmitted: solutionSubmitted,
+		Score:             50, //change later
+		Status:            events.Accepted,
+		Message:           "Solution is correct!",
+	}
+
+	switch jobResult.Error {
+	case executor.CompileError:
+		solutionResult.Message = fmt.Sprintf("compiled error: %v\n", jobResult.Output)
+		solutionResult.Status = events.CompilationError
+
+	case executor.RunTimeError:
+		solutionResult.Message = fmt.Sprintf("runtime error: %v\n", jobResult.Output)
+		solutionResult.Status = events.RuntimeError
+
+	case executor.FailTestCase:
+		solutionResult.Message = fmt.Sprintf("test case failed: %v\n", jobResult.Output)
+		solutionResult.Status = events.WrongAnswer
+	}
+
+	return *solutionResult
 }
 
 // combineCodeWithTemplate combined the userCode and templateFunction at placeHolder

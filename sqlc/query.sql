@@ -34,8 +34,8 @@ DELETE FROM events WHERE id = $1;
 
 -- Languages
 -- name: CreateLanguage :one
-INSERT INTO languages (name, compile_cmd, run_cmd)
-VALUES ($1, $2, $3)
+INSERT INTO languages (name, compile_cmd, run_cmd, temp_file_dir, temp_file_name)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetLanguageByID :one
@@ -53,7 +53,7 @@ SELECT * FROM languages WHERE name = $1;
 
 -- name: UpdateLanguage :one
 UPDATE languages
-SET name = $2, compile_cmd = $3, run_cmd = $4
+SET name = $2, compile_cmd = $3, run_cmd = $4, temp_file_dir = $5, temp_file_name = $6
 WHERE id = $1
 RETURNING *;
 
@@ -126,6 +126,16 @@ VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetCodeProblemLanguageDetail :one
+SELECT * FROM code_problem_language_details
+WHERE code_problem_id = $1 AND language_id = $2;
+
+-- name: GetCodeProblemLanguageDetailByLanguageName :one
+SELECT cpld.*
+FROM code_problem_language_details cpld
+JOIN languages l ON cpld.language_id = l.id
+WHERE cpld.code_problem_id = $1 AND l.name = $2;
+
+-- name: GetCodeProblemLanguage :one
 SELECT * FROM code_problem_language_details
 WHERE code_problem_id = $1 AND language_id = $2;
 

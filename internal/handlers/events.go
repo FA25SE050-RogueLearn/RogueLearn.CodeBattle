@@ -43,6 +43,7 @@ func (hr *HandlerRepo) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		"player_id", playerID)
 
 	hr.logger.Info("rooms map", "rooms_map", hr.eventHub.Rooms)
+
 	// Set http headers required for SSE
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")

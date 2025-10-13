@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 )
 
@@ -14,6 +15,9 @@ const (
 	pythonCodePlaceHolder = "# USER_CODE_HERE"
 
 	jsCodePlaceHolder = "// USER_CODE_HERE"
+
+	tempFileDirHolder  = "{{temp_file_dir}}"
+	tempFileNameHolder = "{{temp_file_name}}"
 )
 
 type LanguagePlaceHolder struct {
@@ -50,16 +54,22 @@ type CodeBuilder interface {
 
 // ConcreteCodeBuilder is a struct for building complete and functionable code.
 type ConcreteCodeBuilder struct {
-	lang string
-
 	// store a map of package analyzers for future compiled languages integration
 	pkgAnalyzers map[string]PackageAnalyzer
+	logger       *slog.Logger
 }
 
-func NewCodeBuilder(pkgAnalyzer PackageAnalyzer) CodeBuilder {
-	return &ConcreteCodeBuilder{
+func NewCodeBuilder(pkgAnalyzer []PackageAnalyzer, logger *slog.Logger) CodeBuilder {
+	b := ConcreteCodeBuilder{
 		pkgAnalyzers: make(map[string]PackageAnalyzer),
+		logger:       logger,
 	}
+
+	for _, analyzer := range pkgAnalyzer {
+		b.pkgAnalyzers[analyzer.GetNormalizedName()] = analyzer
+	}
+
+	return &b
 }
 
 // Build will generate the code after sanitizing, dynamically imports, and combining driverCode, userCode.
@@ -71,32 +81,44 @@ func (c *ConcreteCodeBuilder) Build(lang, driverCode, userCode string) (string, 
 	}
 
 	// only generate imports for compiled languages
+	placeholder := getLanguagePlaceHolder(lang)
+
+	finalCode := strings.Replace(driverCode, placeholder.codePlaceHolder, userCode, 1)
+	c.logger.Info("User code added to Driver code", "final_code", finalCode)
+
 	var imports string
 	if c.pkgAnalyzers != nil {
-		pkgs, err := c.pkgAnalyzers[lang].Analyze(userCode)
+		pkgs, err := c.pkgAnalyzers[lang].Analyze(finalCode)
 		if err != nil {
+			c.logger.Error("failed to analyze package", "err", err)
 			return "", err
 		}
 
 		imports = c.generateImports(pkgs)
+		c.logger.Info("imports generated", "imports", imports)
 	}
 
-	// combining altogether (imports + driverCode + userCode)
-	placeholder := getLanguagePlaceHolder(lang)
-	importedCode := strings.Replace(userCode, placeholder.importPlaceHolder, imports, 1)
-	finalCode := strings.Replace(driverCode, placeholder.codePlaceHolder, importedCode, 1)
+	// combining altogether
+	finalCode = strings.Replace(finalCode, placeholder.importPlaceHolder, imports, 1)
+	c.logger.Info("Code built", "final_code", finalCode)
 
 	return finalCode, nil
 }
 
-func (c *ConcreteCodeBuilder) generateImports(pkgs []string) string {
-	imports := `
-	import (
-	)
-	`
-	for _, pkg := range pkgs {
-		imports += fmt.Sprintf("\t%s\n", pkg)
+func (c *ConcreteCodeBuilder) generateImports(pkgs map[string]bool) string {
+	if len(pkgs) == 0 {
+		return ""
 	}
 
-	return imports
+	var builder strings.Builder
+
+	builder.WriteString("import (\n")
+
+	for pkg, _ := range pkgs {
+		builder.WriteString(fmt.Sprintf(" \t\"%s\"\n ", pkg))
+	}
+
+	builder.WriteString(")")
+
+	return builder.String()
 }

@@ -82,6 +82,8 @@ CREATE TABLE public.languages (
   name text NOT NULL,
   compile_cmd text NOT NULL,
   run_cmd text NOT NULL,
+  temp_file_dir text,
+  temp_file_name text,
   CONSTRAINT languages_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.leaderboard_entries (

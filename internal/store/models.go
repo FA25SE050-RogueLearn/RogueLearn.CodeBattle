@@ -156,10 +156,12 @@ type GuildLeaderboardEntry struct {
 }
 
 type Language struct {
-	ID         pgtype.UUID
-	Name       string
-	CompileCmd string
-	RunCmd     string
+	ID           pgtype.UUID
+	Name         string
+	CompileCmd   string
+	RunCmd       string
+	TempFileDir  pgtype.Text
+	TempFileName pgtype.Text
 }
 
 type LeaderboardEntry struct {

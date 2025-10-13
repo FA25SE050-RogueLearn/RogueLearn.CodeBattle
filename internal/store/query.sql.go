@@ -244,26 +244,36 @@ func (q *Queries) CreateGuildLeaderboardEntry(ctx context.Context, arg CreateGui
 }
 
 const createLanguage = `-- name: CreateLanguage :one
-INSERT INTO languages (name, compile_cmd, run_cmd)
-VALUES ($1, $2, $3)
-RETURNING id, name, compile_cmd, run_cmd
+INSERT INTO languages (name, compile_cmd, run_cmd, temp_file_dir, temp_file_name)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, compile_cmd, run_cmd, temp_file_dir, temp_file_name
 `
 
 type CreateLanguageParams struct {
-	Name       string
-	CompileCmd string
-	RunCmd     string
+	Name         string
+	CompileCmd   string
+	RunCmd       string
+	TempFileDir  pgtype.Text
+	TempFileName pgtype.Text
 }
 
 // Languages
 func (q *Queries) CreateLanguage(ctx context.Context, arg CreateLanguageParams) (Language, error) {
-	row := q.db.QueryRow(ctx, createLanguage, arg.Name, arg.CompileCmd, arg.RunCmd)
+	row := q.db.QueryRow(ctx, createLanguage,
+		arg.Name,
+		arg.CompileCmd,
+		arg.RunCmd,
+		arg.TempFileDir,
+		arg.TempFileName,
+	)
 	var i Language
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.CompileCmd,
 		&i.RunCmd,
+		&i.TempFileDir,
+		&i.TempFileName,
 	)
 	return i, err
 }
@@ -699,6 +709,30 @@ func (q *Queries) GetCodeProblemByID(ctx context.Context, id pgtype.UUID) (CodeP
 	return i, err
 }
 
+const getCodeProblemLanguage = `-- name: GetCodeProblemLanguage :one
+SELECT code_problem_id, language_id, solution_stub, driver_code, time_constraint_ms, space_constraint_mb FROM code_problem_language_details
+WHERE code_problem_id = $1 AND language_id = $2
+`
+
+type GetCodeProblemLanguageParams struct {
+	CodeProblemID pgtype.UUID
+	LanguageID    pgtype.UUID
+}
+
+func (q *Queries) GetCodeProblemLanguage(ctx context.Context, arg GetCodeProblemLanguageParams) (CodeProblemLanguageDetail, error) {
+	row := q.db.QueryRow(ctx, getCodeProblemLanguage, arg.CodeProblemID, arg.LanguageID)
+	var i CodeProblemLanguageDetail
+	err := row.Scan(
+		&i.CodeProblemID,
+		&i.LanguageID,
+		&i.SolutionStub,
+		&i.DriverCode,
+		&i.TimeConstraintMs,
+		&i.SpaceConstraintMb,
+	)
+	return i, err
+}
+
 const getCodeProblemLanguageDetail = `-- name: GetCodeProblemLanguageDetail :one
 SELECT code_problem_id, language_id, solution_stub, driver_code, time_constraint_ms, space_constraint_mb FROM code_problem_language_details
 WHERE code_problem_id = $1 AND language_id = $2
@@ -711,6 +745,32 @@ type GetCodeProblemLanguageDetailParams struct {
 
 func (q *Queries) GetCodeProblemLanguageDetail(ctx context.Context, arg GetCodeProblemLanguageDetailParams) (CodeProblemLanguageDetail, error) {
 	row := q.db.QueryRow(ctx, getCodeProblemLanguageDetail, arg.CodeProblemID, arg.LanguageID)
+	var i CodeProblemLanguageDetail
+	err := row.Scan(
+		&i.CodeProblemID,
+		&i.LanguageID,
+		&i.SolutionStub,
+		&i.DriverCode,
+		&i.TimeConstraintMs,
+		&i.SpaceConstraintMb,
+	)
+	return i, err
+}
+
+const getCodeProblemLanguageDetailByLanguageName = `-- name: GetCodeProblemLanguageDetailByLanguageName :one
+SELECT cpld.code_problem_id, cpld.language_id, cpld.solution_stub, cpld.driver_code, cpld.time_constraint_ms, cpld.space_constraint_mb
+FROM code_problem_language_details cpld
+JOIN languages l ON cpld.language_id = l.id
+WHERE cpld.code_problem_id = $1 AND l.name = $2
+`
+
+type GetCodeProblemLanguageDetailByLanguageNameParams struct {
+	CodeProblemID pgtype.UUID
+	Name          string
+}
+
+func (q *Queries) GetCodeProblemLanguageDetailByLanguageName(ctx context.Context, arg GetCodeProblemLanguageDetailByLanguageNameParams) (CodeProblemLanguageDetail, error) {
+	row := q.db.QueryRow(ctx, getCodeProblemLanguageDetailByLanguageName, arg.CodeProblemID, arg.Name)
 	var i CodeProblemLanguageDetail
 	err := row.Scan(
 		&i.CodeProblemID,
@@ -1307,7 +1367,7 @@ func (q *Queries) GetGuildParticipantsByGuild(ctx context.Context, guildID pgtyp
 }
 
 const getLanguageByID = `-- name: GetLanguageByID :one
-SELECT id, name, compile_cmd, run_cmd FROM languages WHERE id = $1
+SELECT id, name, compile_cmd, run_cmd, temp_file_dir, temp_file_name FROM languages WHERE id = $1
 `
 
 func (q *Queries) GetLanguageByID(ctx context.Context, id pgtype.UUID) (Language, error) {
@@ -1318,12 +1378,14 @@ func (q *Queries) GetLanguageByID(ctx context.Context, id pgtype.UUID) (Language
 		&i.Name,
 		&i.CompileCmd,
 		&i.RunCmd,
+		&i.TempFileDir,
+		&i.TempFileName,
 	)
 	return i, err
 }
 
 const getLanguageByName = `-- name: GetLanguageByName :one
-SELECT id, name, compile_cmd, run_cmd FROM languages WHERE name = $1
+SELECT id, name, compile_cmd, run_cmd, temp_file_dir, temp_file_name FROM languages WHERE name = $1
 `
 
 func (q *Queries) GetLanguageByName(ctx context.Context, name string) (Language, error) {
@@ -1334,6 +1396,8 @@ func (q *Queries) GetLanguageByName(ctx context.Context, name string) (Language,
 		&i.Name,
 		&i.CompileCmd,
 		&i.RunCmd,
+		&i.TempFileDir,
+		&i.TempFileName,
 	)
 	return i, err
 }
@@ -1384,7 +1448,7 @@ func (q *Queries) GetLanguageDetailsForProblem(ctx context.Context, codeProblemI
 }
 
 const getLanguages = `-- name: GetLanguages :many
-SELECT id, name, compile_cmd, run_cmd
+SELECT id, name, compile_cmd, run_cmd, temp_file_dir, temp_file_name
 FROM languages
 ORDER BY name
 LIMIT $1
@@ -1410,6 +1474,8 @@ func (q *Queries) GetLanguages(ctx context.Context, arg GetLanguagesParams) ([]L
 			&i.Name,
 			&i.CompileCmd,
 			&i.RunCmd,
+			&i.TempFileDir,
+			&i.TempFileName,
 		); err != nil {
 			return nil, err
 		}
@@ -2504,16 +2570,18 @@ func (q *Queries) UpdateGuildLeaderboardEntry(ctx context.Context, arg UpdateGui
 
 const updateLanguage = `-- name: UpdateLanguage :one
 UPDATE languages
-SET name = $2, compile_cmd = $3, run_cmd = $4
+SET name = $2, compile_cmd = $3, run_cmd = $4, temp_file_dir = $5, temp_file_name = $6
 WHERE id = $1
-RETURNING id, name, compile_cmd, run_cmd
+RETURNING id, name, compile_cmd, run_cmd, temp_file_dir, temp_file_name
 `
 
 type UpdateLanguageParams struct {
-	ID         pgtype.UUID
-	Name       string
-	CompileCmd string
-	RunCmd     string
+	ID           pgtype.UUID
+	Name         string
+	CompileCmd   string
+	RunCmd       string
+	TempFileDir  pgtype.Text
+	TempFileName pgtype.Text
 }
 
 func (q *Queries) UpdateLanguage(ctx context.Context, arg UpdateLanguageParams) (Language, error) {
@@ -2522,6 +2590,8 @@ func (q *Queries) UpdateLanguage(ctx context.Context, arg UpdateLanguageParams) 
 		arg.Name,
 		arg.CompileCmd,
 		arg.RunCmd,
+		arg.TempFileDir,
+		arg.TempFileName,
 	)
 	var i Language
 	err := row.Scan(
@@ -2529,6 +2599,8 @@ func (q *Queries) UpdateLanguage(ctx context.Context, arg UpdateLanguageParams) 
 		&i.Name,
 		&i.CompileCmd,
 		&i.RunCmd,
+		&i.TempFileDir,
+		&i.TempFileName,
 	)
 	return i, err
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/protos"
 	"google.golang.org/grpc"
 
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/executor"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/handlers"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/service"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/store"
@@ -49,18 +50,17 @@ func main() {
 	logger := slog.New(slogHandler)
 	slog.SetDefault(logger) // Set default for any library using slog's default logger
 
-	// worker, err := executor.NewWorkerPool(logger, queries, &executor.WorkerPoolOptions{
-	// 	MaxWorkers:       5,
-	// 	MemoryLimitBytes: 256,
-	// 	MaxJobCount:      3,
-	// 	CpuNanoLimit:     5000,
-	// })
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// gr := channels.NewGlobalRooms(queries, logger, worker)
+	worker, err := executor.NewWorkerPool(logger, queries, &executor.WorkerPoolOptions{
+		MaxWorkers:       5,
+		MemoryLimitBytes: 512,
+		MaxJobCount:      3,
+		CpuNanoLimit:     1000,
+	})
+	if err != nil {
+		panic(err)
+	}
 
-	handlerRepo := handlers.NewHandlerRepo(logger, queries)
+	handlerRepo := handlers.NewHandlerRepo(logger, queries, worker)
 
 	app := api.NewApplication(cfg, logger, queries, handlerRepo)
 

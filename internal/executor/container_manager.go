@@ -1,6 +1,8 @@
 package executor
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -136,6 +138,10 @@ func (d *DockerContainerManager) StartContainer() error {
 			NanoCPUs: d.cpunanoLimit * 1000_000,
 		},
 		NetworkMode: "none",
+		RestartPolicy: container.RestartPolicy{
+			Name:              "on-failure",
+			MaximumRetryCount: 3,
+		},
 	}
 
 	// create container
@@ -311,6 +317,46 @@ func (d *DockerContainerManager) ShutDown() {
 		d.RemoveContainer(c.ID)
 	}
 	d.logger.Info("Shutdown process is done")
+}
+
+func (d *DockerContainerManager) copyCodeToContainer(
+	ctx context.Context,
+	containerID, fileDir, fileName string,
+	content []byte) error {
+
+	var tarBuffer bytes.Buffer
+	tw := tar.NewWriter(&tarBuffer)
+
+	// Create a tar header for the file
+	header := &tar.Header{
+		Name: fileName,
+		Mode: 0777, // File is executable
+		Size: int64(len(content)),
+	}
+
+	if err := tw.WriteHeader(header); err != nil {
+		return err
+	}
+	if _, err := tw.Write(content); err != nil {
+		return err
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+
+	tarReader := bytes.NewReader(tarBuffer.Bytes())
+
+	// The destination path for CopyToContainer is the directory
+	err := d.cli.CopyToContainer(ctx, containerID, fileDir, tarReader, container.CopyToContainerOptions{
+		AllowOverwriteDirWithFile: true,
+	})
+
+	if err != nil {
+		d.logger.Error("Failed to copy code to container", "container_id", containerID, "err", err)
+		return err
+	}
+
+	return nil
 }
 
 // SetContainerState set the status of a specific Container

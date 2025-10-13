@@ -23,7 +23,7 @@ type HandlerRepo struct {
 }
 
 // NewHandlerRepo creates a new HandlerRepo with the provided dependencies.
-func NewHandlerRepo(logger *slog.Logger, queries *store.Queries) *HandlerRepo {
+func NewHandlerRepo(logger *slog.Logger, queries *store.Queries, worker *executor.WorkerPool) *HandlerRepo {
 	secKey := env.GetString("JWT_SECRET_KEY", "")
 	if secKey == "" {
 		panic("JWT_SECRET_KEY env not found")
@@ -32,7 +32,7 @@ func NewHandlerRepo(logger *slog.Logger, queries *store.Queries) *HandlerRepo {
 		logger:    logger,
 		queries:   queries,
 		jwtParser: jwt.NewJWTParser(secKey, logger),
-		eventHub:  hub.NewEventHub(queries, logger, &executor.WorkerPool{}),
+		eventHub:  hub.NewEventHub(queries, logger, worker),
 	}
 }
 
