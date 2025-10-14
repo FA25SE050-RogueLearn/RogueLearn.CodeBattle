@@ -87,8 +87,8 @@ func (c *ConcreteCodeBuilder) Build(lang, driverCode, userCode string) (string, 
 	c.logger.Info("User code added to Driver code", "final_code", finalCode)
 
 	var imports string
-	if c.pkgAnalyzers != nil {
-		pkgs, err := c.pkgAnalyzers[lang].Analyze(finalCode)
+	if analyzer := c.pkgAnalyzers[lang]; analyzer != nil {
+		pkgs, err := analyzer.Analyze(finalCode)
 		if err != nil {
 			c.logger.Error("failed to analyze package", "err", err)
 			return "", err
@@ -96,10 +96,11 @@ func (c *ConcreteCodeBuilder) Build(lang, driverCode, userCode string) (string, 
 
 		imports = c.generateImports(pkgs)
 		c.logger.Info("imports generated", "imports", imports)
+
+		finalCode = strings.Replace(finalCode, placeholder.importPlaceHolder, imports, 1)
 	}
 
 	// combining altogether
-	finalCode = strings.Replace(finalCode, placeholder.importPlaceHolder, imports, 1)
 	c.logger.Info("Code built", "final_code", finalCode)
 
 	return finalCode, nil
