@@ -724,18 +724,37 @@
                                 if (result.data.execution_time_ms) {
                                     output += `<br>Total Execution Time: ${result.data.execution_time_ms}`;
                                 }
+                                if (result.data.stdout) {
+                                    output += `<br><br><strong>Output (stdout):</strong><pre style="white-space: pre-wrap; word-wrap: break-word; background-color: #f0f0f0; padding: 5px; border-radius: 3px; color: #333;">${result.data.stdout}</pre>`;
+                                }
+                                if (result.data.stderr) {
+                                    output += `<br><br><strong>Debug (stderr):</strong><pre style="white-space: pre-wrap; word-wrap: break-word; background-color: #f0f0f0; padding: 5px; border-radius: 3px; color: #333;">${result.data.stderr}</pre>`;
+                                }
                                 resultContainer.innerHTML = `<div style="color: #155724; padding: 10px; border: 1px solid #c3e6cb; border-radius: 5px; background-color: #d4edda; margin-top: 10px;">${output}</div>`;
                                 logNotification(
                                     `Exercise solution for problem ${selectedProblemId} passed.`,
                                     "success",
                                 );
                             } else {
-                                const errorMessage =
+                                let detailedMessage =
                                     result.data.message ||
                                     "An unknown error occurred.";
-                                resultContainer.innerHTML = `<div style="color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px; background-color: #f8d7da; margin-top: 10px;"><strong>Submission failed:</strong><pre style="white-space: pre-wrap; word-wrap: break-word;">${errorMessage}</pre></div>`;
+
+                                // The 'Wrong Answer' message is comprehensive. For other errors, add stdout/stderr.
+                                if (
+                                    !detailedMessage.startsWith("Wrong Answer")
+                                ) {
+                                    if (result.data.stdout) {
+                                        detailedMessage += `\n\n--- STDOUT ---\n${result.data.stdout}`;
+                                    }
+                                    if (result.data.stderr) {
+                                        detailedMessage += `\n\n--- STDERR ---\n${result.data.stderr}`;
+                                    }
+                                }
+
+                                resultContainer.innerHTML = `<div style="color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px; background-color: #f8d7da; margin-top: 10px;"><strong>Submission failed:</strong><pre style="white-space: pre-wrap; word-wrap: break-word;">${detailedMessage}</pre></div>`;
                                 logNotification(
-                                    `Exercise submission failed: ${errorMessage}`,
+                                    `Exercise submission failed: ${result.data.message}`,
                                     "error",
                                 );
                             }

@@ -1,10 +1,14 @@
 package executor
 
 import (
-	"fmt"
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
+)
+
+var (
+	ErrParsed error = errors.New("Failed to analyze code.")
 )
 
 // PackageAnalyzer helps finding which packages are being imported in a piece of code
@@ -32,8 +36,7 @@ func (p *GoPackageAnalyzer) Analyze(code string) (map[string]bool, error) {
 	// 0 means parse everything
 	node, err := parser.ParseFile(fset, "code.go", code, 0)
 	if err != nil {
-		fmt.Println("error")
-		return nil, err
+		return nil, ErrParsed
 	}
 
 	// this find all the packages that are EXPLICITLY imported (import statement)

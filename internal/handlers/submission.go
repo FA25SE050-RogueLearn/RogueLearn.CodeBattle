@@ -22,6 +22,7 @@ const (
 var (
 	ErrLanguageNotFound error = errors.New("Invalid programming language")
 	ErrInvalidProblem   error = errors.New("Invalid problem")
+	ErrWrongSyntax      error = errors.New("Wrong syntax")
 )
 
 type SubmissionRequest struct {
@@ -89,6 +90,12 @@ func (hr *HandlerRepo) SubmitSolutionHandler(w http.ResponseWriter, r *http.Requ
 
 	// combine problem's driver code with user's code
 	finalCode, err := hr.codeBuilder.Build(normalizedLang, problem.DriverCode, submission.Code)
+	if err == executor.ErrParsed {
+		hr.logger.Warn("Wrong syntax")
+		hr.badRequest(w, r, ErrWrongSyntax)
+		return
+	}
+
 	if err != nil {
 		hr.logger.Error("failed to build code", "err", err)
 		hr.serverError(w, r, ErrInternalServer)

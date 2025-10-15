@@ -213,7 +213,13 @@ func (w *WorkerPool) executeJob(workerID int, job Job) error {
 				"err", compileResult.Err,
 				"stderr", compileResult.Stderr,
 				"stdout", compileResult.Stdout)
-			job.Result <- Result{Error: CompileError, Success: false, Stdout: compileResult.Stderr}
+			job.Result <- Result{
+				Error:   CompileError,
+				Success: false,
+				Stdout:  compileResult.Stdout,
+				Stderr:  compileResult.Stderr,
+				Message: "Compiled failed",
+			}
 			return err
 		}
 		w.logger.Info("Compilation successful", "duration", compileResult.Duration.Milliseconds())
@@ -261,6 +267,7 @@ func (w *WorkerPool) executeJob(workerID int, job Job) error {
 			job.Result <- Result{
 				Success: false,
 				Stdout:  runResult.Stdout,
+				Stderr:  runResult.Stderr,
 				Error:   FailTestCase,
 				Message: message,
 			}

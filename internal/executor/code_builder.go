@@ -89,9 +89,9 @@ func (c *ConcreteCodeBuilder) Build(lang, driverCode, userCode string) (string, 
 	var imports string
 	if analyzer := c.pkgAnalyzers[lang]; analyzer != nil {
 		pkgs, err := analyzer.Analyze(finalCode)
-		if err != nil {
-			c.logger.Error("failed to analyze package", "err", err)
-			return "", err
+		if err != nil && err == ErrParsed {
+			c.logger.Error("Wrong syntax")
+			return "", ErrParsed
 		}
 
 		imports = c.generateImports(pkgs)
