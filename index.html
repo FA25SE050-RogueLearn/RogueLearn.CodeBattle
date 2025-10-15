@@ -389,7 +389,7 @@
                 document.getElementById("leaderboard-list").innerHTML =
                     "<p>Connecting to leaderboard...</p>";
 
-                const url = `${API_BASE_URL}/events/${eventId}/rooms/${roomId}/leaderboard?player_id=${playerID}`;
+                const url = `${API_BASE_URL}/events/${eventId}/rooms/${roomId}/leaderboard?connected_player_id=${playerID}`;
                 eventSource = new EventSource(url);
 
                 eventSource.onopen = () => {
@@ -426,6 +426,45 @@
                         );
                     },
                 );
+
+                eventSource.addEventListener("LEADERBOARD_UPDATED", (e) => {
+                    logNotification("Leaderboard updated.");
+                    const leaderboardList =
+                        document.getElementById("leaderboard-list");
+                    leaderboardList.innerHTML = ""; // Clear current leaderboard
+
+                    try {
+                        const eventPayload = JSON.parse(e.data);
+                        const entries = eventPayload.Data; // The actual leaderboard is in the 'Data' field
+
+                        if (Array.isArray(entries) && entries.length > 0) {
+                            // Sort by place just in case the server doesn't guarantee order
+                            entries.sort((a, b) => a.place - b.place);
+
+                            entries.forEach((entry) => {
+                                const li = document.createElement("li");
+                                li.textContent = `#${entry.place} - ${entry.player_name} (Score: ${entry.score})`;
+                                leaderboardList.appendChild(li);
+                            });
+                        } else {
+                            leaderboardList.innerHTML =
+                                "<p>No players on the leaderboard yet.</p>";
+                        }
+                    } catch (error) {
+                        console.error(
+                            "Error parsing leaderboard data:",
+                            error,
+                            "Raw data:",
+                            e.data,
+                        );
+                        logNotification(
+                            "Failed to update leaderboard.",
+                            "error",
+                        );
+                        leaderboardList.innerHTML =
+                            "<p>Error updating leaderboard.</p>";
+                    }
+                });
 
                 eventSource.addEventListener("PLAYER_JOINED", (e) => {
                     logNotification("A player has joined the room.");

@@ -338,17 +338,18 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 }
 
 const createRoomPlayer = `-- name: CreateRoomPlayer :one
-INSERT INTO room_players (room_id, user_id, score, place, state)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING room_id, user_id, score, place, state, disconnected_at, joined_at
+INSERT INTO room_players (room_id, user_id, username, score, place, state)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING room_id, user_id, username, score, place, state, disconnected_at, joined_at
 `
 
 type CreateRoomPlayerParams struct {
-	RoomID pgtype.UUID
-	UserID pgtype.UUID
-	Score  int32
-	Place  pgtype.Int4
-	State  pgtype.Text
+	RoomID   pgtype.UUID
+	UserID   pgtype.UUID
+	Username pgtype.Text
+	Score    int32
+	Place    pgtype.Int4
+	State    pgtype.Text
 }
 
 // Room Players
@@ -356,6 +357,7 @@ func (q *Queries) CreateRoomPlayer(ctx context.Context, arg CreateRoomPlayerPara
 	row := q.db.QueryRow(ctx, createRoomPlayer,
 		arg.RoomID,
 		arg.UserID,
+		arg.Username,
 		arg.Score,
 		arg.Place,
 		arg.State,
@@ -364,6 +366,7 @@ func (q *Queries) CreateRoomPlayer(ctx context.Context, arg CreateRoomPlayerPara
 	err := row.Scan(
 		&i.RoomID,
 		&i.UserID,
+		&i.Username,
 		&i.Score,
 		&i.Place,
 		&i.State,
@@ -636,7 +639,7 @@ const disconnectRoomPlayer = `-- name: DisconnectRoomPlayer :one
 UPDATE room_players
 SET disconnected_at = NOW()
 WHERE room_id = $1 AND user_id = $2
-RETURNING room_id, user_id, score, place, state, disconnected_at, joined_at
+RETURNING room_id, user_id, username, score, place, state, disconnected_at, joined_at
 `
 
 type DisconnectRoomPlayerParams struct {
@@ -650,6 +653,7 @@ func (q *Queries) DisconnectRoomPlayer(ctx context.Context, arg DisconnectRoomPl
 	err := row.Scan(
 		&i.RoomID,
 		&i.UserID,
+		&i.Username,
 		&i.Score,
 		&i.Place,
 		&i.State,
@@ -1642,14 +1646,14 @@ func (q *Queries) GetLeaderboardByUser(ctx context.Context, userID pgtype.UUID) 
 	return items, nil
 }
 
-const getPlayersByUser = `-- name: GetPlayersByUser :many
-SELECT room_id, user_id, score, place, state, disconnected_at, joined_at FROM room_players
+const getPlayersByUserID = `-- name: GetPlayersByUserID :many
+SELECT room_id, user_id, username, score, place, state, disconnected_at, joined_at FROM room_players
 WHERE user_id = $1
 ORDER BY score DESC
 `
 
-func (q *Queries) GetPlayersByUser(ctx context.Context, userID pgtype.UUID) ([]RoomPlayer, error) {
-	rows, err := q.db.Query(ctx, getPlayersByUser, userID)
+func (q *Queries) GetPlayersByUserID(ctx context.Context, userID pgtype.UUID) ([]RoomPlayer, error) {
+	rows, err := q.db.Query(ctx, getPlayersByUserID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1660,6 +1664,7 @@ func (q *Queries) GetPlayersByUser(ctx context.Context, userID pgtype.UUID) ([]R
 		if err := rows.Scan(
 			&i.RoomID,
 			&i.UserID,
+			&i.Username,
 			&i.Score,
 			&i.Place,
 			&i.State,
@@ -1756,7 +1761,7 @@ func (q *Queries) GetRoomByID(ctx context.Context, id pgtype.UUID) (Room, error)
 
 const getRoomLeaderboard = `-- name: GetRoomLeaderboard :many
 SELECT
-    rp.room_id, rp.user_id, rp.score, rp.place, rp.state, rp.disconnected_at, rp.joined_at,
+    rp.room_id, rp.user_id, rp.username, rp.score, rp.place, rp.state, rp.disconnected_at, rp.joined_at,
     COUNT(s.id) as submission_count,
     MAX(s.submitted_at) as last_submission
 FROM room_players rp
@@ -1769,6 +1774,7 @@ ORDER BY rp.score DESC, rp.place ASC
 type GetRoomLeaderboardRow struct {
 	RoomID          pgtype.UUID
 	UserID          pgtype.UUID
+	Username        pgtype.Text
 	Score           int32
 	Place           pgtype.Int4
 	State           pgtype.Text
@@ -1790,6 +1796,7 @@ func (q *Queries) GetRoomLeaderboard(ctx context.Context, roomID pgtype.UUID) ([
 		if err := rows.Scan(
 			&i.RoomID,
 			&i.UserID,
+			&i.Username,
 			&i.Score,
 			&i.Place,
 			&i.State,
@@ -1809,7 +1816,7 @@ func (q *Queries) GetRoomLeaderboard(ctx context.Context, roomID pgtype.UUID) ([
 }
 
 const getRoomPlayer = `-- name: GetRoomPlayer :one
-SELECT room_id, user_id, score, place, state, disconnected_at, joined_at FROM room_players
+SELECT room_id, user_id, username, score, place, state, disconnected_at, joined_at FROM room_players
 WHERE room_id = $1 AND user_id = $2
 `
 
@@ -1824,6 +1831,7 @@ func (q *Queries) GetRoomPlayer(ctx context.Context, arg GetRoomPlayerParams) (R
 	err := row.Scan(
 		&i.RoomID,
 		&i.UserID,
+		&i.Username,
 		&i.Score,
 		&i.Place,
 		&i.State,
@@ -1834,7 +1842,7 @@ func (q *Queries) GetRoomPlayer(ctx context.Context, arg GetRoomPlayerParams) (R
 }
 
 const getRoomPlayers = `-- name: GetRoomPlayers :many
-SELECT room_id, user_id, score, place, state, disconnected_at, joined_at FROM room_players
+SELECT room_id, user_id, username, score, place, state, disconnected_at, joined_at FROM room_players
 WHERE room_id = $1
 ORDER BY score DESC, place ASC
 `
@@ -1851,6 +1859,7 @@ func (q *Queries) GetRoomPlayers(ctx context.Context, roomID pgtype.UUID) ([]Roo
 		if err := rows.Scan(
 			&i.RoomID,
 			&i.UserID,
+			&i.Username,
 			&i.Score,
 			&i.Place,
 			&i.State,
@@ -2668,7 +2677,7 @@ const updateRoomPlayerScore = `-- name: UpdateRoomPlayerScore :one
 UPDATE room_players
 SET score = $3, place = $4
 WHERE room_id = $1 AND user_id = $2
-RETURNING room_id, user_id, score, place, state, disconnected_at, joined_at
+RETURNING room_id, user_id, username, score, place, state, disconnected_at, joined_at
 `
 
 type UpdateRoomPlayerScoreParams struct {
@@ -2689,6 +2698,7 @@ func (q *Queries) UpdateRoomPlayerScore(ctx context.Context, arg UpdateRoomPlaye
 	err := row.Scan(
 		&i.RoomID,
 		&i.UserID,
+		&i.Username,
 		&i.Score,
 		&i.Place,
 		&i.State,
@@ -2702,7 +2712,7 @@ const updateRoomPlayerState = `-- name: UpdateRoomPlayerState :one
 UPDATE room_players
 SET state = $3
 WHERE room_id = $1 AND user_id = $2
-RETURNING room_id, user_id, score, place, state, disconnected_at, joined_at
+RETURNING room_id, user_id, username, score, place, state, disconnected_at, joined_at
 `
 
 type UpdateRoomPlayerStateParams struct {
@@ -2717,6 +2727,7 @@ func (q *Queries) UpdateRoomPlayerState(ctx context.Context, arg UpdateRoomPlaye
 	err := row.Scan(
 		&i.RoomID,
 		&i.UserID,
+		&i.Username,
 		&i.Score,
 		&i.Place,
 		&i.State,

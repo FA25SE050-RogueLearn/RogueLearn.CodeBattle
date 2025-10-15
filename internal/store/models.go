@@ -184,6 +184,7 @@ type Room struct {
 type RoomPlayer struct {
 	RoomID         pgtype.UUID
 	UserID         pgtype.UUID
+	Username       pgtype.Text
 	Score          int32
 	Place          pgtype.Int4
 	State          pgtype.Text

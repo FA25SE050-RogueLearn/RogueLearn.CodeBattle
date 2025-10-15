@@ -99,6 +99,7 @@ CREATE TABLE public.leaderboard_entries (
 CREATE TABLE public.room_players (
   room_id uuid NOT NULL,
   user_id uuid NOT NULL,
+  username text DEFAULT ''::text,
   score integer NOT NULL DEFAULT 0,
   place integer,
   state text DEFAULT ''::text,

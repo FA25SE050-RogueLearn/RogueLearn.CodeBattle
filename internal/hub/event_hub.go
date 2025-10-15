@@ -319,7 +319,6 @@ func (r *RoomHub) processSolutionResult(event events.SolutionResult) error {
 			Data:      fmt.Sprintf("status:%v,message:%v", event.Status, event.Message),
 		}
 
-		// send compilation error to the player
 		go r.dispatchEventToPlayer(sseEvent, event.SolutionSubmitted.PlayerID)
 
 		return nil
@@ -328,7 +327,7 @@ func (r *RoomHub) processSolutionResult(event events.SolutionResult) error {
 	r.queries.UpdateRoomPlayerScore(ctx, store.UpdateRoomPlayerScoreParams{
 		RoomID: toPgtypeUUID(event.SolutionSubmitted.RoomID),
 		UserID: toPgtypeUUID(event.SolutionSubmitted.PlayerID),
-		// Score: ,
+		Score:  36, // change later
 	})
 
 	// Recalculate leaderboard after score update
@@ -337,13 +336,25 @@ func (r *RoomHub) processSolutionResult(event events.SolutionResult) error {
 		// non-fatal, but should be monitored
 	}
 
-	sseEvent := events.SseEvent{
+	correctSolution := events.SseEvent{
 		EventType: events.CORRECT_SOLUTION_SUBMITTED,
 		Data:      "",
 	}
 
 	// send event to the whole room
-	go r.dispatchEvent(sseEvent)
+	go r.dispatchEvent(correctSolution)
+
+	entries, err := r.getRoomLeaderboardEntries(ctx)
+	if err != nil {
+		return err
+	}
+
+	leaderboardUpdated := events.SseEvent{
+		EventType: events.LEADERBOARD_UPDATED,
+		Data:      entries,
+	}
+
+	go r.dispatchEvent(leaderboardUpdated)
 
 	return nil
 }
@@ -354,6 +365,11 @@ func (r *RoomHub) playerInRoom(ctx context.Context, roomID, playerID uuid.UUID) 
 		RoomID: toPgtypeUUID(roomID),
 		UserID: toPgtypeUUID(playerID),
 	})
+
+	if err != nil {
+		r.logger.Error("failed to get player", "err", err)
+		return false
+	}
 
 	if err == sql.ErrNoRows {
 		r.logger.Error("no player found", "err", sql.ErrNoRows)
@@ -366,10 +382,11 @@ func (r *RoomHub) playerInRoom(ctx context.Context, roomID, playerID uuid.UUID) 
 }
 
 // Helper method to add player to room
-func (r *RoomHub) addPlayerToRoom(ctx context.Context, roomID, playerID uuid.UUID) error {
+func (r *RoomHub) addPlayerToRoom(ctx context.Context, roomID, playerID uuid.UUID, playerName string) error {
 	createParams := store.CreateRoomPlayerParams{
-		RoomID: toPgtypeUUID(roomID),
-		UserID: toPgtypeUUID(playerID),
+		RoomID:   toPgtypeUUID(roomID),
+		UserID:   toPgtypeUUID(playerID),
+		Username: pgtype.Text{String: playerName, Valid: true},
 	}
 
 	_, err := r.queries.CreateRoomPlayer(ctx, createParams)
@@ -384,6 +401,12 @@ func (r *RoomHub) removePlayerFromRoom(ctx context.Context, roomID, playerID uui
 	})
 }
 
+type RoomLeaderboardEntry struct {
+	PlayerName string `json:"player_name"`
+	Score      int32  `json:"score"`
+	Place      int32  `json:"place"`
+}
+
 // calculateLeaderboard recalculates and updates player ranks in a single, atomic, and concurrency-safe operation.
 func (r *RoomHub) calculateLeaderboard(ctx context.Context) error {
 	// Lock to prevent concurrent calculations for the same room, which could cause deadlocks or race conditions.
@@ -392,16 +415,33 @@ func (r *RoomHub) calculateLeaderboard(ctx context.Context) error {
 
 	r.logger.Info("Starting leaderboard calculation for room", "room_id", r.RoomID)
 
-	// Use the new, highly efficient single query to update all ranks.
-	// This avoids transactions in Go code and looping, pushing the logic to the database where it's most performant.
 	err := r.queries.CalculateRoomLeaderboard(ctx, toPgtypeUUID(r.RoomID))
 	if err != nil {
 		r.logger.Error("Failed to update player ranks via single query", "room_id", r.RoomID, "error", err)
 		return err
 	}
 
-	// r.logger.Info("Finished calculating leaderboard for room", "room_id", r.RoomID)
 	return nil
+}
+
+func (r *RoomHub) getRoomLeaderboardEntries(ctx context.Context) ([]RoomLeaderboardEntry, error) {
+	var entries []RoomLeaderboardEntry
+	// get room players
+	roomPlayers, err := r.queries.GetRoomPlayers(ctx, toPgtypeUUID(r.RoomID))
+	if err != nil {
+		r.logger.Error("Failed to get room players", "room_id", r.RoomID, "error", err)
+		return nil, err
+	}
+
+	for _, rp := range roomPlayers {
+		entries = append(entries, RoomLeaderboardEntry{
+			PlayerName: rp.Username.String,
+			Score:      rp.Score,
+			Place:      rp.Place.Int32,
+		})
+	}
+
+	return entries, nil
 }
 
 func (r *RoomHub) processPlayerJoined(event events.PlayerJoined) error {
@@ -413,7 +453,10 @@ func (r *RoomHub) processPlayerJoined(event events.PlayerJoined) error {
 		r.logger.Info("player is not in room, adding to room...",
 			"playerID", event.PlayerID,
 			"room", event.RoomID)
-		err := r.addPlayerToRoom(ctx, event.RoomID, event.PlayerID)
+
+		playerName := "grpc_called"
+
+		err := r.addPlayerToRoom(ctx, event.RoomID, event.PlayerID, playerName)
 		if err != nil {
 			r.logger.Error("failed to add player to room", "error", err)
 			return err
@@ -431,12 +474,24 @@ func (r *RoomHub) processPlayerJoined(event events.PlayerJoined) error {
 
 	data := fmt.Sprintf("playerId:%d,roomId:%d\n\n", event.PlayerID, r.RoomID)
 
-	sseEvent := events.SseEvent{
+	playerJoined := events.SseEvent{
 		EventType: events.PLAYER_JOINED,
 		Data:      data,
 	}
 
-	go r.dispatchEvent(sseEvent)
+	go r.dispatchEvent(playerJoined)
+
+	entries, err := r.getRoomLeaderboardEntries(ctx)
+	if err != nil {
+		return err
+	}
+
+	leaderboardUpdated := events.SseEvent{
+		EventType: events.LEADERBOARD_UPDATED,
+		Data:      entries,
+	}
+
+	go r.dispatchEvent(leaderboardUpdated)
 
 	return nil
 }
@@ -458,13 +513,25 @@ func (r *RoomHub) processPlayerLeft(event events.PlayerLeft) error {
 		r.logger.Error("failed to calculate leaderboard after player left", "error", err)
 	}
 
-	sseEvent := events.SseEvent{
+	playerLeft := events.SseEvent{
 		EventType: events.PLAYER_LEFT,
 		Data:      data,
 	}
 
-	go r.dispatchEvent(sseEvent)
+	go r.dispatchEvent(playerLeft)
 	r.logger.Info("player left", "event", event)
+
+	entries, err := r.getRoomLeaderboardEntries(ctx)
+	if err != nil {
+		r.logger.Error("failed to get room leaderboard entries", "error", err)
+	}
+
+	leaderboardUpdated := events.SseEvent{
+		EventType: events.LEADERBOARD_UPDATED,
+		Data:      entries,
+	}
+
+	go r.dispatchEvent(leaderboardUpdated)
 
 	return nil
 }
@@ -488,6 +555,7 @@ func (r *RoomHub) processRoomDeleted(event events.RoomDeleted) error {
 	if err != nil {
 		r.logger.Error("failed to delete room from database", "error", err)
 	}
+
 	r.logger.Info("room deleted", "roomID", event.RoomID)
 
 	go r.dispatchEvent(sseEvent)

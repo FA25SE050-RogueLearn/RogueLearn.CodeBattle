@@ -30,19 +30,17 @@ func (hr *HandlerRepo) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		"room_id", roomID)
 
 	// get from the passed context in production stage, we will get from query in dev stage
-	playerIDStr := r.URL.Query().Get("player_id")
-	playerID, err := uuid.Parse(playerIDStr)
+	connectedPlayerIDStr := r.URL.Query().Get("connected_player_id")
+	connectedPlayerID, err := uuid.Parse(connectedPlayerIDStr)
 	if err != nil {
-		hr.logger.Error("failed to parse playerID",
-			"player_id", playerIDStr)
+		hr.logger.Error("failed to parse connectedPlayerID",
+			"err", err)
 		hr.badRequest(w, r, err)
 		return
 	}
 
 	hr.logger.Info("player join requested",
-		"player_id", playerID)
-
-	hr.logger.Info("rooms map", "rooms_map", hr.eventHub.Rooms)
+		"connected_player_id", connectedPlayerID)
 
 	// Set http headers required for SSE
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -66,41 +64,41 @@ func (hr *HandlerRepo) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	if roomHub.Listerners == nil {
 		roomHub.Listerners = make(map[uuid.UUID]chan<- events.SseEvent)
 	}
-	roomHub.Listerners[playerID] = listen
+	roomHub.Listerners[connectedPlayerID] = listen
 	roomHub.Mu.Unlock()
 
-	defer hr.logger.Info("SSE connection closed", "player_id", playerID, "room_id", roomID)
+	defer hr.logger.Info("SSE connection closed", "connected_player_id", connectedPlayerID, "room_id", roomID)
 	defer close(listen)
 	defer func() {
 		roomHub.Mu.Lock()
-		delete(roomHub.Listerners, playerID)
+		delete(roomHub.Listerners, connectedPlayerID)
 		roomHub.Mu.Unlock()
 		go func() {
-			roomHub.Events <- events.PlayerLeft{PlayerID: playerID, RoomID: roomID}
+			roomHub.Events <- events.PlayerLeft{PlayerID: connectedPlayerID, RoomID: roomID}
 		}()
 	}()
 
-	hr.logger.Info("SSE connection established", "player_id", playerID, "room_id", roomID)
+	hr.logger.Info("SSE connection established", "connected_player_id", connectedPlayerID, "room_id", roomID)
 
 	// player joined event
-	roomHub.Events <- events.PlayerJoined{PlayerID: playerID, RoomID: roomID}
+	roomHub.Events <- events.PlayerJoined{PlayerID: connectedPlayerID, RoomID: roomID}
 
 	for {
 		select {
 		case <-r.Context().Done():
-			hr.logger.Info("SSE client disconnected", "player_id", playerID, "room_id", roomID)
+			hr.logger.Info("SSE client disconnected", "connected_player_id", connectedPlayerID, "room_id", roomID)
 			// player left event
 			return
 		case event, ok := <-listen:
 			if !ok {
-				hr.logger.Info("SSE client disconnected", "player_id", playerID, "room_id", roomID)
+				hr.logger.Info("SSE client disconnected", "connected_player_id", connectedPlayerID, "room_id", roomID)
 				return
 			}
 
-			hr.logger.Info("Sending event to player's client", "player_id", playerID, "event", event, "room_id", roomID)
+			hr.logger.Info("Sending event to player's client", "connected_player_id", connectedPlayerID, "event", event, "room_id", roomID)
 			data, err := json.Marshal(event)
 			if err != nil {
-				hr.logger.Error("failed to marshal SSE event", "error", err, "player_id", playerID)
+				hr.logger.Error("failed to marshal SSE event", "error", err, "connected_player_id", connectedPlayerID)
 				return // Client is likely gone, so exit
 			}
 

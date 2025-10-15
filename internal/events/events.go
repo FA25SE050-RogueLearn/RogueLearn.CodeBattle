@@ -16,6 +16,7 @@ const (
 	PLAYER_LEFT                EventType = "PLAYER_LEFT"
 	ROOM_DELETED               EventType = "ROOM_DELETED"
 	COMPILATION_TEST           EventType = "COMPILATION_TEST"
+	LEADERBOARD_UPDATED        EventType = "LEADERBOARD_UPDATED"
 )
 
 // Event wrapper for the listener

@@ -244,8 +244,8 @@ DELETE FROM rooms WHERE id = $1;
 
 -- Room Players
 -- name: CreateRoomPlayer :one
-INSERT INTO room_players (room_id, user_id, score, place, state)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO room_players (room_id, user_id, username, score, place, state)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetRoomPlayer :one
@@ -257,7 +257,7 @@ SELECT * FROM room_players
 WHERE room_id = $1
 ORDER BY score DESC, place ASC;
 
--- name: GetPlayersByUser :many
+-- name: GetPlayersByUserID :many
 SELECT * FROM room_players
 WHERE user_id = $1
 ORDER BY score DESC;
