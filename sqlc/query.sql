@@ -268,6 +268,11 @@ SET score = $3, place = $4
 WHERE room_id = $1 AND user_id = $2
 RETURNING *;
 
+-- name: AddRoomPlayerScore :exec
+UPDATE public.room_players
+SET score = score + sqlc.arg(points_to_add)::integer
+WHERE room_id = sqlc.arg(room_id) AND user_id = sqlc.arg(user_id);
+
 -- name: UpdateRoomPlayerState :one
 UPDATE room_players
 SET state = $3
@@ -392,7 +397,7 @@ ORDER BY s.submitted_at DESC;
 
 -- name: UpdateSubmissionStatus :one
 UPDATE submissions
-SET status = $2, execution_time_ms = $3
+SET status = $2
 WHERE id = $1
 RETURNING *;
 

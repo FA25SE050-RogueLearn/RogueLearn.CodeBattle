@@ -243,6 +243,22 @@ func (r *RoomHub) processSolutionSubmitted(event events.SolutionSubmitted) error
 		return err
 	}
 
+	submission, err := r.queries.CreateSubmission(ctx, store.CreateSubmissionParams{
+		UserID:        toPgtypeUUID(event.PlayerID),
+		CodeProblemID: toPgtypeUUID(event.ProblemID),
+		LanguageID:    lang.ID,
+		RoomID:        toPgtypeUUID(event.RoomID),
+		CodeSubmitted: event.Code,
+		Status:        store.SubmissionStatusPending,
+	})
+
+	if err != nil {
+		r.logger.Error("failed to create submission", "err", err)
+		return err
+	}
+
+	event.SubmissionID = submission.ID.Bytes
+
 	problem, err := r.queries.GetCodeProblemLanguageDetail(ctx, store.GetCodeProblemLanguageDetailParams{
 		CodeProblemID: toPgtypeUUID(event.ProblemID),
 		LanguageID:    lang.ID,
@@ -309,7 +325,7 @@ func (r *RoomHub) processSolutionResult(event events.SolutionResult) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	r.logger.Info("processSoltuionResult() hit", "event", event)
+	r.logger.Info("processing solution result...", "submission_id", event.SolutionSubmitted.SubmissionID)
 
 	if event.Status != events.Accepted {
 		r.logger.Info("solution failed", "event", event)
@@ -318,16 +334,33 @@ func (r *RoomHub) processSolutionResult(event events.SolutionResult) error {
 			Data:      fmt.Sprintf("status:%v,message:%v", event.Status, event.Message),
 		}
 
+		_, err := r.queries.UpdateSubmissionStatus(ctx, store.UpdateSubmissionStatusParams{
+			ID:     toPgtypeUUID(event.SolutionSubmitted.SubmissionID),
+			Status: store.SubmissionStatusWrongAnswer,
+		})
+
+		if err != nil {
+			r.logger.Error("failed to update submission status to wrong", "error", err,
+				"submission_id", event.SolutionSubmitted.SubmissionID)
+			return err
+		}
+
 		go r.dispatchEventToPlayer(sseEvent, event.SolutionSubmitted.PlayerID)
 
 		return nil
 	}
 
-	r.queries.UpdateRoomPlayerScore(ctx, store.UpdateRoomPlayerScoreParams{
-		RoomID: toPgtypeUUID(event.SolutionSubmitted.RoomID),
-		UserID: toPgtypeUUID(event.SolutionSubmitted.PlayerID),
-		Score:  36, // change later
+	err := r.queries.AddRoomPlayerScore(ctx, store.AddRoomPlayerScoreParams{
+		PointsToAdd: int32(event.Score),
+		UserID:      toPgtypeUUID(event.SolutionSubmitted.PlayerID),
+		RoomID:      toPgtypeUUID(event.SolutionSubmitted.RoomID),
 	})
+
+	if err != nil {
+		r.logger.Error("failed to add score",
+			"err", err)
+		return err
+	}
 
 	// Recalculate leaderboard after score update
 	if err := r.calculateLeaderboard(ctx); err != nil {
@@ -354,6 +387,18 @@ func (r *RoomHub) processSolutionResult(event events.SolutionResult) error {
 	}
 
 	go r.dispatchEvent(leaderboardUpdated)
+
+	// mark the problem as solved
+	_, err = r.queries.UpdateSubmissionStatus(ctx, store.UpdateSubmissionStatusParams{
+		ID:     toPgtypeUUID(event.SolutionSubmitted.SubmissionID),
+		Status: store.SubmissionStatusAccepted,
+	})
+
+	if err != nil {
+		r.logger.Error("failed to update submission status to accepted", "error", err,
+			"submission_id", event.SolutionSubmitted.SubmissionID)
+		return err
+	}
 
 	return nil
 }

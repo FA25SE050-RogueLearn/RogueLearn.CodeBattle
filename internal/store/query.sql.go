@@ -11,6 +11,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addRoomPlayerScore = `-- name: AddRoomPlayerScore :exec
+UPDATE public.room_players
+SET score = score + $1::integer
+WHERE room_id = $2 AND user_id = $3
+`
+
+type AddRoomPlayerScoreParams struct {
+	PointsToAdd int32
+	RoomID      pgtype.UUID
+	UserID      pgtype.UUID
+}
+
+func (q *Queries) AddRoomPlayerScore(ctx context.Context, arg AddRoomPlayerScoreParams) error {
+	_, err := q.db.Exec(ctx, addRoomPlayerScore, arg.PointsToAdd, arg.RoomID, arg.UserID)
+	return err
+}
+
 const calculateGuildLeaderboard = `-- name: CalculateGuildLeaderboard :exec
 WITH ranked_guilds AS (
   SELECT
@@ -2739,19 +2756,18 @@ func (q *Queries) UpdateRoomPlayerState(ctx context.Context, arg UpdateRoomPlaye
 
 const updateSubmissionStatus = `-- name: UpdateSubmissionStatus :one
 UPDATE submissions
-SET status = $2, execution_time_ms = $3
+SET status = $2
 WHERE id = $1
 RETURNING id, user_id, code_problem_id, language_id, room_id, code_submitted, status, execution_time_ms, submitted_at, submitted_guild_id
 `
 
 type UpdateSubmissionStatusParams struct {
-	ID              pgtype.UUID
-	Status          SubmissionStatus
-	ExecutionTimeMs pgtype.Int4
+	ID     pgtype.UUID
+	Status SubmissionStatus
 }
 
 func (q *Queries) UpdateSubmissionStatus(ctx context.Context, arg UpdateSubmissionStatusParams) (Submission, error) {
-	row := q.db.QueryRow(ctx, updateSubmissionStatus, arg.ID, arg.Status, arg.ExecutionTimeMs)
+	row := q.db.QueryRow(ctx, updateSubmissionStatus, arg.ID, arg.Status)
 	var i Submission
 	err := row.Scan(
 		&i.ID,

@@ -37,6 +37,7 @@ const (
 )
 
 type SolutionSubmitted struct {
+	SubmissionID  uuid.UUID
 	PlayerID      uuid.UUID
 	EventID       uuid.UUID
 	RoomID        uuid.UUID

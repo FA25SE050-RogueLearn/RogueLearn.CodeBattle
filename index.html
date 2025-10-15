@@ -696,7 +696,7 @@
                     const language = document.getElementById(
                         "exercise-language-selector",
                     ).value;
-                    const url = `${API_BASE_URL}/submissions`;
+                    const url = `${API_BASE_URL}/submissions?player_id=${playerID}`;
                     const resultContainer = document.getElementById(
                         "exercise-submission-result",
                     );
