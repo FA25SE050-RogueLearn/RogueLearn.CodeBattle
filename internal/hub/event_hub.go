@@ -50,14 +50,13 @@ type RoomHub struct {
 	leaderboardMu sync.Mutex   // Protects leaderboard calculation
 }
 
-func NewEventHub(queries *store.Queries, logger *slog.Logger, worker *executor.WorkerPool) *EventHub {
-	pkgAnalyzer := executor.NewGoPackageAnalyzer()
+func NewEventHub(queries *store.Queries, logger *slog.Logger, codeBuilder executor.CodeBuilder, worker *executor.WorkerPool) *EventHub {
 	e := EventHub{
 		worker:      worker,
 		logger:      logger,
 		queries:     queries,
 		Rooms:       make(map[uuid.UUID]*RoomHub),
-		codeBuilder: executor.NewCodeBuilder([]executor.PackageAnalyzer{pkgAnalyzer}, logger),
+		codeBuilder: codeBuilder,
 	}
 
 	// --------- remove on production ---------

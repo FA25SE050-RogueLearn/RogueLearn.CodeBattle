@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -8,6 +9,11 @@ import (
 	"strings"
 
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/response"
+)
+
+var (
+	ErrInvalidRequest error = errors.New("Invalid request")
+	ErrInternalServer error = errors.New("Internal server error")
 )
 
 func (hr *HandlerRepo) reportServerError(r *http.Request, err error) {

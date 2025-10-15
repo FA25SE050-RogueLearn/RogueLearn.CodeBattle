@@ -14,6 +14,31 @@ import (
 type CodeProblemResponse struct {
 }
 
+func (hr *HandlerRepo) GetProblemsHandler(w http.ResponseWriter, r *http.Request) {
+	// For now, no pagination.
+	// In the future, we can add helper functions to parse query params for pagination.
+	params := store.GetCodeProblemsParams{
+		Limit:  10,
+		Offset: 0,
+	}
+
+	problems, err := hr.queries.GetCodeProblems(r.Context(), params)
+	if err != nil {
+		hr.serverError(w, r, err)
+		return
+	}
+
+	err = response.JSON(w, response.JSONResponseParameters{
+		Status:  http.StatusOK,
+		Data:    problems,
+		Success: true,
+		Msg:     "Problems retrieved successfully",
+	})
+	if err != nil {
+		hr.serverError(w, r, err)
+	}
+}
+
 func (hr *HandlerRepo) GetRoomProblemsHandler(w http.ResponseWriter, r *http.Request) {
 	roomIDStr := chi.URLParam(r, "event_id")
 	roomIDUID, err := uuid.Parse(roomIDStr)

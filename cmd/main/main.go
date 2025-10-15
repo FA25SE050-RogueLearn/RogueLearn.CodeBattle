@@ -60,7 +60,10 @@ func main() {
 		panic(err)
 	}
 
-	handlerRepo := handlers.NewHandlerRepo(logger, queries, worker)
+	pkgAnalyzer := executor.NewGoPackageAnalyzer()
+	codeBuilder := executor.NewCodeBuilder([]executor.PackageAnalyzer{pkgAnalyzer}, logger)
+
+	handlerRepo := handlers.NewHandlerRepo(logger, queries, codeBuilder, worker)
 
 	app := api.NewApplication(cfg, logger, queries, handlerRepo)
 

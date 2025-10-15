@@ -20,12 +20,17 @@ func (app *Application) routes() http.Handler {
 		// Auth-protected routes for event interaction
 		r.Get("/{event_id}/leaderboard", app.handlers.SpectateEventHandler)
 		r.Get("/{event_id}/rooms/{room_id}/leaderboard", app.handlers.JoinRoomHandler)
-		r.Post("/{event_id}/rooms/{room_id}/submit", app.handlers.SubmitSolutionHandler)
+		r.Post("/{event_id}/rooms/{room_id}/submit", app.handlers.SubmitSolutionInRoomHandler)
 		r.Get("/{event_id}/rooms/{room_id}/problems", app.handlers.GetRoomProblemsHandler)
+	})
+
+	mux.Route("/submissions", func(r chi.Router) {
+		r.Post("/", app.handlers.SubmitSolutionHandler)
 	})
 
 	mux.Route("/problems", func(r chi.Router) {
 		// Public routes for events
+		r.Get("/", app.handlers.GetProblemsHandler)
 
 		// Auth-protected routes for event interaction
 		r.Get("/{problem_id}/details", app.handlers.GetProblemDetails)

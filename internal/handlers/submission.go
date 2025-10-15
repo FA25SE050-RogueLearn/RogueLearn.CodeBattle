@@ -1,24 +1,116 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
 
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/events"
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/executor"
+	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/internal/store"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/request"
 	"github.com/FA25SE050-RogueLearn/RogueLearn.CodeBattle/pkg/response"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
-type submissionRequest struct {
+const (
+	DefaultQueryTimeoutSecond = 10 * time.Second
+)
+
+var (
+	ErrLanguageNotFound error = errors.New("Invalid programming language")
+	ErrInvalidProblem   error = errors.New("Invalid problem")
+)
+
+type SubmissionRequest struct {
 	ProblemID string `json:"problem_id"`
 	Code      string `json:"code"`
 	Language  string `json:"language"`
 }
 
+type SubmissionResponse struct {
+	Output        string           `json:"output"`
+	Sucess        bool             `json:"success"`
+	Error         executor.CodeErr `json:"error"`
+	ExecutionTime string           `json:"execution_time_ms"`
+}
+
+// SubmitSolutionHandler will compile and run test cases of a solution for a code problem
 func (hr *HandlerRepo) SubmitSolutionHandler(w http.ResponseWriter, r *http.Request) {
+	var submission SubmissionRequest
+	err := request.DecodeJSON(w, r, &submission)
+	if err != nil {
+		hr.badRequest(w, r, ErrInvalidRequest)
+		return
+	}
+
+	problemIDUID, err := uuid.Parse(submission.ProblemID)
+	if err != nil {
+		hr.badRequest(w, r, ErrInvalidProblem)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultQueryTimeoutSecond)
+	defer cancel()
+
+	normalizedLang, found := executor.NormalizeLanguage(submission.Language)
+	if !found {
+		hr.logger.Warn("programming language not found", "lang", submission.Language)
+		hr.badRequest(w, r, ErrLanguageNotFound)
+		return
+	}
+
+	lang, err := hr.queries.GetLanguageByName(ctx, normalizedLang)
+	if err != nil {
+		hr.logger.Error("failed to get language", "lang", normalizedLang)
+		return
+	}
+
+	problem, err := hr.queries.GetCodeProblemLanguageDetail(ctx, store.GetCodeProblemLanguageDetailParams{
+		CodeProblemID: toPgtypeUUID(problemIDUID),
+		LanguageID:    lang.ID,
+	})
+	if err != nil {
+		hr.logger.Error("Error", "question", err)
+		hr.badRequest(w, r, ErrInternalServer)
+		return
+	}
+
+	testCases, err := hr.queries.GetTestCasesByProblem(ctx, problem.CodeProblemID)
+	if err != nil {
+		hr.logger.Error("failed to get test cases", "problem_id", problem.CodeProblemID)
+		hr.badRequest(w, r, ErrInternalServer)
+		return
+	}
+
+	// combine problem's driver code with user's code
+	finalCode, err := hr.codeBuilder.Build(normalizedLang, problem.DriverCode, submission.Code)
+	if err != nil {
+		hr.logger.Error("failed to build code", "err", err)
+		hr.serverError(w, r, ErrInternalServer)
+		return
+	}
+
+	hr.logger.Info("Code built successfully", "final_code", finalCode)
+
+	result := hr.worker.ExecuteJob(lang, finalCode, testCases)
+	response.JSON(w, response.JSONResponseParameters{
+		Status: http.StatusOK,
+		Data: SubmissionResponse{
+			Output:        result.Output,
+			Sucess:        result.Sucess,
+			Error:         result.Error,
+			ExecutionTime: result.ExecutionTime,
+		},
+		Success: true,
+		Msg:     "solution submitted successfully.",
+		ErrMsg:  "",
+	})
+}
+
+func (hr *HandlerRepo) SubmitSolutionInRoomHandler(w http.ResponseWriter, r *http.Request) {
 	// claims, ok := r.Context().Value("asd").(*jwt.UserClaims)
 	// if !ok {
 	// 	// hr.unauthorizedResponse(w, r)
@@ -47,7 +139,7 @@ func (hr *HandlerRepo) SubmitSolutionHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var reqPayload submissionRequest
+	var reqPayload SubmissionRequest
 	err = request.DecodeJSON(w, r, &reqPayload)
 	if err != nil {
 		hr.badRequest(w, r, err)
