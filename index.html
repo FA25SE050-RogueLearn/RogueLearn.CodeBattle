@@ -29,7 +29,6 @@
             }
             .col {
                 flex: 1;
-                /* THIS IS THE KEY FIX: It allows the flex item to shrink below its content's minimum size. */
                 min-width: 0;
             }
             #events,
@@ -139,6 +138,10 @@
                                 <option value="javascript">JavaScript</option>
                             </select>
                             <button id="submit-code">Submit Solution</button>
+                            <div
+                                id="room-submission-result"
+                                style="margin-top: 10px"
+                            ></div>
                         </div>
                     </div>
                 </div>
@@ -328,6 +331,10 @@
                                 const problemTitle = li.dataset.problemTitle;
 
                                 document.getElementById(
+                                    "exercise-submission-result",
+                                ).innerHTML = "";
+
+                                document.getElementById(
                                     "exercise-submission-area",
                                 ).style.display = "block";
                                 document.getElementById(
@@ -450,6 +457,9 @@
                                 document.getElementById(
                                     "selected-problem-title",
                                 ).textContent = `Solving: ${problemTitle}`;
+                                document.getElementById(
+                                    "room-submission-result",
+                                ).innerHTML = ""; // Clear result area
 
                                 const language =
                                     document.getElementById(
@@ -519,10 +529,15 @@
                 eventSource.addEventListener(
                     "CORRECT_SOLUTION_SUBMITTED",
                     (e) => {
-                        logNotification(
-                            `A correct solution was submitted! Leaderboard will update shortly.`,
-                            "success",
+                        const message =
+                            "A correct solution was submitted! Leaderboard will update shortly.";
+                        logNotification(message, "success");
+                        const resultContainer = document.getElementById(
+                            "room-submission-result",
                         );
+                        if (resultContainer) {
+                            resultContainer.innerHTML = `<div style="color: green;"><strong>Success!</strong> Solution Accepted.</div>`;
+                        }
                     },
                 );
 
@@ -530,10 +545,18 @@
                     "WRONG_SOLUTION_SUBMITTED",
                     (e) => {
                         const eventData = JSON.parse(e.data);
+                        const errorMessage =
+                            eventData.Data || "Your solution failed.";
                         logNotification(
-                            `Your solution failed: ${eventData.Data}`,
+                            `Your solution failed: ${errorMessage}`,
                             "error",
                         );
+                        const resultContainer = document.getElementById(
+                            "room-submission-result",
+                        );
+                        if (resultContainer) {
+                            resultContainer.innerHTML = `<div style="color: red;"><strong>Failed:</strong> ${errorMessage}</div>`;
+                        }
                     },
                 );
 
@@ -609,6 +632,11 @@
                         return;
                     }
 
+                    const resultContainer = document.getElementById(
+                        "room-submission-result",
+                    );
+                    resultContainer.innerHTML = `<div style="color: blue;">Submitting...</div>`;
+
                     const language =
                         document.getElementById("language-selector").value;
                     const url = `${API_BASE_URL}/events/${selectedEventId}/rooms/${selectedRoomId}/submit?player_id=${playerID}`;
@@ -629,12 +657,12 @@
 
                         const result = await response.json();
                         if (result.success) {
-                            alert("Solution submitted successfully!");
+                            resultContainer.innerHTML = `<div style="color: blue;">${result.message}</div>`;
                             logNotification(
                                 `Solution for problem ${selectedProblemId} submitted.`,
                             );
                         } else {
-                            alert("Submission failed: " + result.error_message);
+                            resultContainer.innerHTML = `<div style="color: red;">Submission failed: ${result.error_message}</div>`;
                             logNotification(
                                 `Submission failed: ${result.error_message}`,
                                 "error",
@@ -642,9 +670,7 @@
                         }
                     } catch (error) {
                         console.error("Error submitting solution:", error);
-                        alert(
-                            "An error occurred while submitting your solution.",
-                        );
+                        resultContainer.innerHTML = `<div style="color: red;">An error occurred while submitting your solution.</div>`;
                         logNotification("Error submitting solution.", "error");
                     }
                 });
@@ -671,6 +697,10 @@
                         "exercise-language-selector",
                     ).value;
                     const url = `${API_BASE_URL}/submissions`;
+                    const resultContainer = document.getElementById(
+                        "exercise-submission-result",
+                    );
+                    resultContainer.innerHTML = `<div style="color: blue;">Submitting...</div>`;
 
                     try {
                         const response = await fetch(url, {
@@ -686,31 +716,42 @@
                         });
 
                         const result = await response.json();
-                        const resultContainer = document.getElementById(
-                            "exercise-submission-result",
-                        );
-                        if (result.success) {
-                            let output = `Success!`;
-                            if (result.data) {
-                                output += `<br>Output: ${result.data.output}`;
-                                output += `<br>Execution Time: ${result.data.execution_time_ms}`;
+                        resultContainer.innerHTML = ""; // Clear previous result
+
+                        if (result.success && result.data) {
+                            if (result.data.success) {
+                                let output = `<strong>Success!</strong> All test cases passed.`;
+                                if (result.data.execution_time_ms) {
+                                    output += `<br>Total Execution Time: ${result.data.execution_time_ms}`;
+                                }
+                                resultContainer.innerHTML = `<div style="color: #155724; padding: 10px; border: 1px solid #c3e6cb; border-radius: 5px; background-color: #d4edda; margin-top: 10px;">${output}</div>`;
+                                logNotification(
+                                    `Exercise solution for problem ${selectedProblemId} passed.`,
+                                    "success",
+                                );
+                            } else {
+                                const errorMessage =
+                                    result.data.message ||
+                                    "An unknown error occurred.";
+                                resultContainer.innerHTML = `<div style="color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px; background-color: #f8d7da; margin-top: 10px;"><strong>Submission failed:</strong><pre style="white-space: pre-wrap; word-wrap: break-word;">${errorMessage}</pre></div>`;
+                                logNotification(
+                                    `Exercise submission failed: ${errorMessage}`,
+                                    "error",
+                                );
                             }
-                            resultContainer.innerHTML = output;
-                            logNotification(
-                                `Solution for problem ${selectedProblemId} submitted successfully.`,
-                            );
                         } else {
-                            resultContainer.innerHTML = `Submission failed: ${result.error_message}`;
+                            const errorMessage =
+                                result.error_message ||
+                                "An unknown server error occurred.";
+                            resultContainer.innerHTML = `<div style="color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px; background-color: #f8d7da; margin-top: 10px;"><strong>Submission failed:</strong> ${errorMessage}</div>`;
                             logNotification(
-                                `Submission failed: ${result.error_message}`,
+                                `Submission failed: ${errorMessage}`,
                                 "error",
                             );
                         }
                     } catch (error) {
                         console.error("Error submitting solution:", error);
-                        alert(
-                            "An error occurred while submitting your solution.",
-                        );
+                        resultContainer.innerHTML = `<div style="color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px; background-color: #f8d7da; margin-top: 10px;"><strong>An error occurred:</strong> ${error.message}</div>`;
                         logNotification("Error submitting solution.", "error");
                     }
                 });

@@ -284,15 +284,15 @@ func generateSolutionResult(solutionSubmitted events.SolutionSubmitted, jobResul
 
 	switch jobResult.Error {
 	case executor.CompileError:
-		solutionResult.Message = fmt.Sprintf("compiled error: %v\n", jobResult.Output)
+		solutionResult.Message = fmt.Sprintf("compiled error: %v\n", jobResult.Message)
 		solutionResult.Status = events.CompilationError
 
 	case executor.RunTimeError:
-		solutionResult.Message = fmt.Sprintf("runtime error: %v\n", jobResult.Output)
+		solutionResult.Message = fmt.Sprintf("runtime error: %v\n", jobResult.Message)
 		solutionResult.Status = events.RuntimeError
 
 	case executor.FailTestCase:
-		solutionResult.Message = fmt.Sprintf("test case failed: %v\n", jobResult.Output)
+		solutionResult.Message = fmt.Sprintf("test case failed: %v\n", jobResult.Message)
 		solutionResult.Status = events.WrongAnswer
 	}
 

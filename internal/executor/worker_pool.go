@@ -34,8 +34,10 @@ var RunTimeError CodeErr = errors.New("Failed to compile code")
 var FailTestCase CodeErr = errors.New("Test case failed")
 
 type Result struct {
-	Output        string
-	Sucess        bool
+	Stdout        string
+	Stderr        string
+	Message       string
+	Success       bool
 	Error         CodeErr
 	ExecutionTime string
 }
@@ -190,7 +192,7 @@ func (w *WorkerPool) executeJob(workerID int, job Job) error {
 	err = w.cm.copyCodeToContainer(ctx, containerID, job.Language.TempFileDir.String, job.Language.TempFileName.String, []byte(job.Code))
 	if err != nil {
 		w.logger.Error("Failed to copy code to container", "err", err)
-		job.Result <- Result{Error: err, Sucess: false, Output: "Failed to set up execution environment."}
+		job.Result <- Result{Error: err, Success: false, Message: "Failed to set up execution environment."}
 		return err
 	}
 
@@ -211,7 +213,7 @@ func (w *WorkerPool) executeJob(workerID int, job Job) error {
 				"err", compileResult.Err,
 				"stderr", compileResult.Stderr,
 				"stdout", compileResult.Stdout)
-			job.Result <- Result{Error: CompileError, Sucess: false, Output: compileResult.Stderr}
+			job.Result <- Result{Error: CompileError, Success: false, Stdout: compileResult.Stderr}
 			return err
 		}
 		w.logger.Info("Compilation successful", "duration", compileResult.Duration.Milliseconds())
@@ -232,8 +234,15 @@ func (w *WorkerPool) executeJob(workerID int, job Job) error {
 
 		if runResult.Err != nil {
 			w.logger.Warn("Runtime error", "test_case_id", tc.ID, "err", runResult.Err, "stderr", runResult.Stderr)
-			job.Result <- Result{Error: RunTimeError, Sucess: false, Output: runResult.Stderr}
+			job.Result <- Result{
+				Error:   RunTimeError,
+				Success: false,
+				Stdout:  runResult.Stdout,
+				Stderr:  runResult.Stderr,
+				Message: "Runtime error",
+			}
 			runCancel()
+			return nil
 		}
 
 		actualOutput := strings.TrimSpace(runResult.Stdout)
@@ -248,8 +257,13 @@ func (w *WorkerPool) executeJob(workerID int, job Job) error {
 				"expected_output", expectedOutput,
 			)
 
-			// message := fmt.Sprintf("Wrong Answer on test case.\nInput:\n%s\n\nExpected Output:\n%s\n\nYour Output:\n%s", tc.Input, expectedOutput, actualOutput)
-			job.Result <- Result{Sucess: false, Output: runResult.Stdout, Error: FailTestCase}
+			message := fmt.Sprintf("Wrong Answer on test case.\nInput:\n%s\n\nExpected Output:\n%s\n\nYour Output:\n%s", tc.Input, expectedOutput, actualOutput)
+			job.Result <- Result{
+				Success: false,
+				Stdout:  runResult.Stdout,
+				Error:   FailTestCase,
+				Message: message,
+			}
 			runCancel()
 			return err
 		}
@@ -263,8 +277,8 @@ func (w *WorkerPool) executeJob(workerID int, job Job) error {
 	// Step 4: Send Result
 	w.logger.Info("All test cases passed!", "worker_id", workerID)
 	job.Result <- Result{
-		Sucess:        true,
-		Output:        "All test cases passed!",
+		Success:       true,
+		Message:       "All test cases passed!",
 		ExecutionTime: fmt.Sprintf("%dms", totalExecutionTime),
 	}
 

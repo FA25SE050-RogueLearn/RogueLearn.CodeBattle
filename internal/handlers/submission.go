@@ -31,8 +31,10 @@ type SubmissionRequest struct {
 }
 
 type SubmissionResponse struct {
-	Output        string           `json:"output"`
-	Sucess        bool             `json:"success"`
+	Stdout        string           `json:"stdout"`
+	Stderr        string           `json:"stderr"`
+	Message       string           `json:"message"`
+	Success       bool             `json:"success"`
 	Error         executor.CodeErr `json:"error"`
 	ExecutionTime string           `json:"execution_time_ms"`
 }
@@ -99,8 +101,10 @@ func (hr *HandlerRepo) SubmitSolutionHandler(w http.ResponseWriter, r *http.Requ
 	response.JSON(w, response.JSONResponseParameters{
 		Status: http.StatusOK,
 		Data: SubmissionResponse{
-			Output:        result.Output,
-			Sucess:        result.Sucess,
+			Stdout:        result.Stdout,
+			Stderr:        result.Stderr,
+			Message:       result.Message,
+			Success:       result.Success,
 			Error:         result.Error,
 			ExecutionTime: result.ExecutionTime,
 		},
