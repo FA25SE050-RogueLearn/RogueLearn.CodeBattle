@@ -16,3 +16,16 @@ CREATE TYPE submission_status AS ENUM (
   'runtime_error',
   'compilation_error'
 );
+
+CREATE TYPE event_request_status AS ENUM (
+  'pending',
+  'approved',
+  'rejected'
+);
+
+CREATE TYPE room_player_state AS ENUM (
+    'present',
+    'disconnected',
+    'left',
+    'completed'
+);

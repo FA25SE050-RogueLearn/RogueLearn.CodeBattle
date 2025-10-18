@@ -28,18 +28,22 @@ const (
 
 // EventHub struct holds all the RoomHub (channel) of each room
 type EventHub struct {
-	worker  *executor.WorkerPool
-	logger  *slog.Logger
-	queries *store.Queries
-	// roomID -> roomManager
-	Rooms         map[uuid.UUID]*RoomHub
+	worker        *executor.WorkerPool
+	logger        *slog.Logger
+	queries       *store.Queries
+	Rooms         map[uuid.UUID]*RoomHub // roomID -> roomManager
 	Mu            sync.RWMutex
 	leaderboardMu sync.Mutex // Protects leaderboard calculation
 	codeBuilder   executor.CodeBuilder
+
+	GuildUpdateChan  chan uuid.UUID
+	EventListeners   map[uuid.UUID]map[uuid.UUID]chan<- events.SseEvent // eventID -> map[listenerID] channel
+	EventListenersMu sync.RWMutex                                       // A dedicated mutex for the event
 }
 
 type RoomHub struct {
 	RoomID        uuid.UUID
+	EventID       uuid.UUID
 	Events        chan any                             // Events channel is what happened in the room
 	Listerners    map[uuid.UUID]chan<- events.SseEvent // Players connected to this RoomHub
 	codeBuilder   executor.CodeBuilder
@@ -48,16 +52,23 @@ type RoomHub struct {
 	queries       *store.Queries
 	Mu            sync.RWMutex // Protects Listerners map
 	leaderboardMu sync.Mutex   // Protects leaderboard calculation
+
+	guildUpdateChan chan<- uuid.UUID
 }
 
 func NewEventHub(queries *store.Queries, logger *slog.Logger, codeBuilder executor.CodeBuilder, worker *executor.WorkerPool) *EventHub {
 	e := EventHub{
-		worker:      worker,
-		logger:      logger,
-		queries:     queries,
-		Rooms:       make(map[uuid.UUID]*RoomHub),
-		codeBuilder: codeBuilder,
+		worker:          worker,
+		logger:          logger,
+		queries:         queries,
+		Rooms:           make(map[uuid.UUID]*RoomHub),
+		codeBuilder:     codeBuilder,
+		GuildUpdateChan: make(chan uuid.UUID, 100), // Buffered channel
+		EventListeners:  make(map[uuid.UUID]map[uuid.UUID]chan<- events.SseEvent),
 	}
+
+	supabaseEventID, _ := uuid.Parse("e88e5761-e0fa-409d-baad-057edad1496a")
+	e.EventListeners[supabaseEventID] = make(map[uuid.UUID]chan<- events.SseEvent)
 
 	// --------- remove on production ---------
 	beginnerArea, err := uuid.Parse("4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f90")
@@ -70,8 +81,10 @@ func NewEventHub(queries *store.Queries, logger *slog.Logger, codeBuilder execut
 	}
 
 	// remove on production
-	e.CreateRoom(beginnerArea, queries)
-	e.CreateRoom(advancedLobby, queries)
+	e.CreateRoom(supabaseEventID, beginnerArea, queries)
+	e.CreateRoom(supabaseEventID, advancedLobby, queries)
+
+	go e.Start()
 
 	for _, r := range e.Rooms {
 		go r.Start()
@@ -81,14 +94,30 @@ func NewEventHub(queries *store.Queries, logger *slog.Logger, codeBuilder execut
 	return &e
 }
 
+func newRoomHub(eventID, roomId uuid.UUID, queries *store.Queries, worker *executor.WorkerPool, logger *slog.Logger, codeBuilder executor.CodeBuilder, guildUpdateChan chan<- uuid.UUID) *RoomHub {
+	return &RoomHub{
+		RoomID:          roomId,
+		EventID:         eventID, // Set the eventID
+		Events:          make(chan any, 10),
+		Listerners:      make(map[uuid.UUID]chan<- events.SseEvent),
+		logger:          logger,
+		queries:         queries,
+		Mu:              sync.RWMutex{},
+		leaderboardMu:   sync.Mutex{},
+		worker:          worker,
+		codeBuilder:     codeBuilder,
+		guildUpdateChan: guildUpdateChan, // Set the notification channel
+	}
+}
+
 func (h *EventHub) GetRoomById(roomID uuid.UUID) *RoomHub {
 	h.Mu.RLock()
 	defer h.Mu.RUnlock()
 	return h.Rooms[roomID]
 }
 
-func (e *EventHub) CreateRoom(roomID uuid.UUID, queries *store.Queries) *RoomHub {
-	r := newRoomHub(roomID, queries, e.worker, e.logger, e.codeBuilder)
+func (e *EventHub) CreateRoom(eventID, roomID uuid.UUID, queries *store.Queries) *RoomHub {
+	r := newRoomHub(eventID, roomID, queries, e.worker, e.logger, e.codeBuilder, e.GuildUpdateChan)
 	e.Mu.Lock()
 	e.Rooms[roomID] = r
 	e.Mu.Unlock()
@@ -96,17 +125,57 @@ func (e *EventHub) CreateRoom(roomID uuid.UUID, queries *store.Queries) *RoomHub
 	return r
 }
 
-func newRoomHub(roomId uuid.UUID, queries *store.Queries, worker *executor.WorkerPool, logger *slog.Logger, codeBuilder executor.CodeBuilder) *RoomHub {
-	return &RoomHub{
-		RoomID:        roomId,
-		Events:        make(chan any, 10),
-		Listerners:    make(map[uuid.UUID]chan<- events.SseEvent),
-		logger:        logger,
-		queries:       queries,
-		Mu:            sync.RWMutex{},
-		leaderboardMu: sync.Mutex{}, // Initialize the new mutex
-		worker:        worker,
-		codeBuilder:   codeBuilder,
+func (e *EventHub) Start() {
+	for eventID := range e.GuildUpdateChan {
+		e.logger.Info("Received guild leaderboard update notification", "event_id", eventID)
+
+		ctx, cancel := context.WithTimeout(context.Background(), DefaultQueryTimeoutSecond)
+
+		// TODO: You will need a new SQLc query to recalculate the total score for each guild
+		// based on the sum of their players' scores across all rooms in the event.
+		// For now, we assume you have a way to get the updated leaderboard.
+
+		// Fetch the latest guild leaderboard data from the database
+		guildEntries, err := e.queries.GetGuildLeaderboardByEvent(ctx, toPgtypeUUID(eventID))
+		if err != nil {
+			e.logger.Error("failed to get guild leaderboard for event", "event_id", eventID, "error", err)
+			cancel()
+			continue
+		}
+
+		// Create the SSE event payload
+		sseEvent := events.SseEvent{
+			EventType: events.GUILD_LEADERBOARD_UPDATED,
+			Data:      guildEntries, // Assuming your frontend can handle this structure
+		}
+
+		// Broadcast the new leaderboard to all subscribed clients for this event
+		e.dispatchEventToEvent(eventID, sseEvent)
+		cancel()
+	}
+}
+
+// dispatchEventToEvent sends an SSE event to all listeners for a specific event.
+func (e *EventHub) dispatchEventToEvent(eventID uuid.UUID, sseEvent events.SseEvent) {
+	e.EventListenersMu.RLock()
+	defer e.EventListenersMu.RUnlock()
+
+	listeners, ok := e.EventListeners[eventID]
+	if !ok {
+		e.logger.Info("No event listeners found for guild update", "event_id", eventID)
+		return
+	}
+
+	e.logger.Info("Dispatching guild leaderboard update", "event_id", eventID, "listeners_count", len(listeners))
+	for clientID, listener := range listeners {
+		go func(l chan<- events.SseEvent, cID uuid.UUID) {
+			select {
+			case l <- sseEvent:
+				// Sent successfully
+			default:
+				e.logger.Warn("Failed to send guild update to client, channel full or closed", "client_id", cID)
+			}
+		}(listener, clientID)
 	}
 }
 
@@ -362,6 +431,13 @@ func (r *RoomHub) processSolutionResult(event events.SolutionResult) error {
 		return err
 	}
 
+	select {
+	case r.guildUpdateChan <- r.EventID:
+		r.logger.Info("Sent guild leaderboard update notification", "event_id", r.EventID)
+	default:
+		r.logger.Warn("Guild update channel is full, notification dropped", "event_id", r.EventID)
+	}
+
 	// Recalculate leaderboard after score update
 	if err := r.calculateLeaderboard(ctx); err != nil {
 		r.logger.Error("failed to calculate leaderboard after solution result", "error", err)
@@ -430,7 +506,7 @@ func (r *RoomHub) addPlayerToRoom(ctx context.Context, roomID, playerID uuid.UUI
 	createParams := store.CreateRoomPlayerParams{
 		RoomID:   toPgtypeUUID(roomID),
 		UserID:   toPgtypeUUID(playerID),
-		Username: pgtype.Text{String: playerName, Valid: true},
+		Username: playerName,
 	}
 
 	_, err := r.queries.CreateRoomPlayer(ctx, createParams)
@@ -479,7 +555,7 @@ func (r *RoomHub) getRoomLeaderboardEntries(ctx context.Context) ([]RoomLeaderbo
 
 	for _, rp := range roomPlayers {
 		entries = append(entries, RoomLeaderboardEntry{
-			PlayerName: rp.Username.String,
+			PlayerName: rp.Username,
 			Score:      rp.Score,
 			Place:      rp.Place.Int32,
 		})

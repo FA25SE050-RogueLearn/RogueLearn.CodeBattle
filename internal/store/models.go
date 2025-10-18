@@ -11,6 +11,49 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type EventRequestStatus string
+
+const (
+	EventRequestStatusPending  EventRequestStatus = "pending"
+	EventRequestStatusApproved EventRequestStatus = "approved"
+	EventRequestStatusRejected EventRequestStatus = "rejected"
+)
+
+func (e *EventRequestStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = EventRequestStatus(s)
+	case string:
+		*e = EventRequestStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for EventRequestStatus: %T", src)
+	}
+	return nil
+}
+
+type NullEventRequestStatus struct {
+	EventRequestStatus EventRequestStatus
+	Valid              bool // Valid is true if EventRequestStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullEventRequestStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.EventRequestStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.EventRequestStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullEventRequestStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.EventRequestStatus), nil
+}
+
 type EventType string
 
 const (
@@ -53,6 +96,50 @@ func (ns NullEventType) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.EventType), nil
+}
+
+type RoomPlayerState string
+
+const (
+	RoomPlayerStatePresent      RoomPlayerState = "present"
+	RoomPlayerStateDisconnected RoomPlayerState = "disconnected"
+	RoomPlayerStateLeft         RoomPlayerState = "left"
+	RoomPlayerStateCompleted    RoomPlayerState = "completed"
+)
+
+func (e *RoomPlayerState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = RoomPlayerState(s)
+	case string:
+		*e = RoomPlayerState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for RoomPlayerState: %T", src)
+	}
+	return nil
+}
+
+type NullRoomPlayerState struct {
+	RoomPlayerState RoomPlayerState
+	Valid           bool // Valid is true if RoomPlayerState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullRoomPlayerState) Scan(value interface{}) error {
+	if value == nil {
+		ns.RoomPlayerState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.RoomPlayerState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullRoomPlayerState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.RoomPlayerState), nil
 }
 
 type SubmissionStatus string
@@ -125,12 +212,18 @@ type CodeProblemTag struct {
 }
 
 type Event struct {
-	ID          pgtype.UUID
-	Title       string
-	Description string
-	Type        EventType
-	StartedDate pgtype.Timestamptz
-	EndDate     pgtype.Timestamptz
+	ID                 pgtype.UUID
+	Title              string
+	Description        string
+	Type               EventType
+	StartedDate        pgtype.Timestamptz
+	EndDate            pgtype.Timestamptz
+	MaxGuilds          pgtype.Int4
+	MaxPlayersPerGuild pgtype.Int4
+	NumberOfRooms      pgtype.Int4
+	GuildsPerRoom      pgtype.Int4
+	RoomNamingPrefix   pgtype.Text
+	OriginalRequestID  pgtype.UUID
 }
 
 type EventCodeProblem struct {
@@ -146,9 +239,30 @@ type EventGuildParticipant struct {
 	RoomID   pgtype.UUID
 }
 
+type EventRequest struct {
+	ID                   pgtype.UUID
+	Status               EventRequestStatus
+	RequesterGuildID     pgtype.UUID
+	ProcessedByAdminID   pgtype.UUID
+	CreatedAt            pgtype.Timestamptz
+	ProcessedAt          pgtype.Timestamptz
+	EventType            EventType
+	Title                string
+	Description          string
+	ProposedStartDate    pgtype.Timestamptz
+	ProposedEndDate      pgtype.Timestamptz
+	Notes                pgtype.Text
+	ParticipationDetails []byte
+	RoomConfiguration    []byte
+	EventSpecifics       []byte
+	RejectionReason      pgtype.Text
+	ApprovedEventID      pgtype.UUID
+}
+
 type GuildLeaderboardEntry struct {
 	ID           pgtype.UUID
 	GuildID      pgtype.UUID
+	GuildName    string
 	EventID      pgtype.UUID
 	Rank         int32
 	TotalScore   int32
@@ -167,6 +281,7 @@ type Language struct {
 type LeaderboardEntry struct {
 	ID           pgtype.UUID
 	UserID       pgtype.UUID
+	Username     string
 	EventID      pgtype.UUID
 	Rank         int32
 	Score        int32
@@ -184,10 +299,10 @@ type Room struct {
 type RoomPlayer struct {
 	RoomID         pgtype.UUID
 	UserID         pgtype.UUID
-	Username       pgtype.Text
+	Username       string
 	Score          int32
 	Place          pgtype.Int4
-	State          pgtype.Text
+	State          RoomPlayerState
 	DisconnectedAt pgtype.Timestamptz
 	JoinedAt       pgtype.Timestamptz
 }

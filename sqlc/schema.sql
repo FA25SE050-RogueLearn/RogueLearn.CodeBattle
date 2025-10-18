@@ -15,6 +15,19 @@ CREATE TYPE event_type AS ENUM (
     'social'
 );
 
+CREATE TYPE event_request_status AS ENUM (
+  'pending',
+  'approved',
+  'rejected'
+);
+
+CREATE TYPE room_player_state AS ENUM (
+    'present',
+    'disconnected',
+    'left',
+    'completed'
+);
+
 CREATE TABLE public.code_problem_language_details (
   code_problem_id uuid NOT NULL,
   language_id uuid NOT NULL,
@@ -65,11 +78,19 @@ CREATE TABLE public.events (
   type event_type NOT NULL,
   started_date timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'::text),
   end_date timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'::text),
-  CONSTRAINT events_pkey PRIMARY KEY (id)
+  max_guilds integer,
+  max_players_per_guild integer,
+  number_of_rooms integer,
+  guilds_per_room integer,
+  room_naming_prefix text,
+  original_request_id uuid,
+  CONSTRAINT events_pkey PRIMARY KEY (id),
+  CONSTRAINT events_original_request_id_fkey FOREIGN KEY (original_request_id) REFERENCES public.event_requests(id)
 );
 CREATE TABLE public.guild_leaderboard_entries (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   guild_id uuid NOT NULL,
+  guild_name text NOT NULL DEFAULT ''::text,
   event_id uuid NOT NULL,
   rank integer NOT NULL,
   total_score integer NOT NULL,
@@ -89,6 +110,7 @@ CREATE TABLE public.languages (
 CREATE TABLE public.leaderboard_entries (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
+  username text NOT NULL DEFAULT ''::text,
   event_id uuid NOT NULL,
   rank integer NOT NULL,
   score integer NOT NULL,
@@ -99,10 +121,10 @@ CREATE TABLE public.leaderboard_entries (
 CREATE TABLE public.room_players (
   room_id uuid NOT NULL,
   user_id uuid NOT NULL,
-  username text DEFAULT ''::text,
+  username text NOT NULL DEFAULT ''::text,
   score integer NOT NULL DEFAULT 0,
   place integer,
-  state text DEFAULT ''::text,
+  state room_player_state NOT NULL DEFAULT 'present'::room_player_state,
   disconnected_at timestamp with time zone,
   joined_at timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'::text),
   CONSTRAINT room_players_pkey PRIMARY KEY (room_id, user_id),
@@ -147,4 +169,26 @@ CREATE TABLE public.test_cases (
   is_hidden boolean NOT NULL DEFAULT true,
   CONSTRAINT test_cases_pkey PRIMARY KEY (id),
   CONSTRAINT test_cases_code_problem_id_fkey FOREIGN KEY (code_problem_id) REFERENCES public.code_problems(id)
+);
+
+CREATE TABLE public.event_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  status event_request_status NOT NULL DEFAULT 'pending'::event_request_status,
+  requester_guild_id uuid NOT NULL,
+  processed_by_admin_id uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'::text),
+  processed_at timestamp with time zone,
+  event_type event_type NOT NULL,
+  title text NOT NULL,
+  description text NOT NULL,
+  proposed_start_date timestamp with time zone NOT NULL,
+  proposed_end_date timestamp with time zone NOT NULL,
+  notes text DEFAULT ''::text,
+  participation_details jsonb NOT NULL,
+  room_configuration jsonb NOT NULL,
+  event_specifics jsonb,
+  rejection_reason text,
+  approved_event_id uuid,
+  CONSTRAINT event_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT event_requests_approved_event_id_fkey FOREIGN KEY (approved_event_id) REFERENCES public.events(id)
 );

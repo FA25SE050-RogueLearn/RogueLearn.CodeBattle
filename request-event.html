@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Request an Event - RogueLearn CodeBattle</title>
+        <style>
+            /* [Reusing styles from index.html for consistency] */
+            body {
+                font-family: sans-serif;
+                margin: 20px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 900px;
+                margin: auto;
+                background: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+            h1,
+            h2 {
+                color: #333;
+            }
+            form {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+            .form-group {
+                display: flex;
+                flex-direction: column;
+            }
+            label {
+                margin-bottom: 5px;
+                font-weight: bold;
+            }
+            input,
+            textarea,
+            button {
+                width: 100%;
+                padding: 10px;
+                box-sizing: border-box;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+            }
+            textarea {
+                height: 100px;
+                resize: vertical;
+            }
+            button {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                cursor: pointer;
+                margin-top: 10px;
+                grid-column: span 2;
+            }
+            button:hover {
+                background-color: #0056b3;
+            }
+            #request-result {
+                margin-top: 15px;
+                text-align: center;
+            }
+            hr {
+                margin: 30px 0;
+            }
+            .requests-list table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+            .requests-list th,
+            .requests-list td {
+                border: 1px solid #ddd;
+                padding: 12px;
+                text-align: left;
+                vertical-align: middle;
+            }
+            .requests-list th {
+                background-color: #f2f2f2;
+            }
+            .status-pending {
+                color: #f0ad4e;
+                font-weight: bold;
+            }
+            .status-approved {
+                color: #5cb85c;
+                font-weight: bold;
+            }
+            .status-rejected {
+                color: #d9534f;
+                font-weight: bold;
+            }
+            .requests-list .btn-details {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                width: auto; /* override default button width */
+                margin-top: 0;
+                cursor: pointer;
+                border-radius: 4px;
+            }
+            .requests-list .details-row > td {
+                background-color: #f9f9f9;
+                padding: 20px;
+            }
+            .requests-list .details-content h4 {
+                margin-top: 15px;
+                margin-bottom: 5px;
+            }
+            .requests-list .details-content ul {
+                list-style-type: disc;
+                padding-left: 20px;
+                margin: 0;
+            }
+            .requests-list .details-content p {
+                margin: 5px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Request a New Event</h1>
+            <p><a href="./index.html">&larr; Back to Lobby</a></p>
+            <form id="request-event-form">
+                <div class="form-group" style="grid-column: span 2">
+                    <label for="event-title">Title:</label>
+                    <input type="text" id="event-title" name="title" required />
+                </div>
+                <div class="form-group" style="grid-column: span 2">
+                    <label for="event-description">Description:</label>
+                    <textarea
+                        id="event-description"
+                        name="description"
+                        required
+                    ></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="start-date">Proposed Start Date:</label>
+                    <input
+                        type="datetime-local"
+                        id="start-date"
+                        name="start_date"
+                        required
+                    />
+                </div>
+                <div class="form-group">
+                    <label for="end-date">Proposed End Date:</label>
+                    <input
+                        type="datetime-local"
+                        id="end-date"
+                        name="end_date"
+                        required
+                    />
+                </div>
+                <div class="form-group">
+                    <label for="num-rooms">Number of Rooms:</label>
+                    <input
+                        type="number"
+                        id="num-rooms"
+                        name="num_rooms"
+                        value="2"
+                        min="1"
+                        required
+                    />
+                </div>
+                <div class="form-group">
+                    <label for="room-prefix">Room Naming Prefix:</label>
+                    <input
+                        type="text"
+                        id="room-prefix"
+                        name="room_prefix"
+                        value="CodeBattle Room"
+                        required
+                    />
+                </div>
+                <div class="form-group">
+                    <label for="max-guilds">Max Guilds:</label>
+                    <input
+                        type="number"
+                        id="max-guilds"
+                        name="max_guilds"
+                        value="10"
+                        min="1"
+                        required
+                    />
+                </div>
+                <div class="form-group">
+                    <label for="max-players">Max Players per Guild:</label>
+                    <input
+                        type="number"
+                        id="max-players"
+                        name="max_players"
+                        value="5"
+                        min="1"
+                        required
+                    />
+                </div>
+                <div class="form-group" style="grid-column: span 2">
+                    <label for="notes">Notes for Admin:</label>
+                    <textarea
+                        id="notes"
+                        name="notes"
+                        placeholder="Any special requests or information for the admin..."
+                    ></textarea>
+                </div>
+                <button type="submit">Submit Request</button>
+            </form>
+            <div id="request-result"></div>
+
+            <hr />
+
+            <h2>My Event Requests</h2>
+            <div id="my-requests-container" class="requests-list">
+                <p>Loading your requests...</p>
+            </div>
+        </div>
+
+        <script>
+            const API_BASE_URL = "http://localhost:8080";
+            let playerID = null;
+            // This is a placeholder. In a real app, the guild ID would be associated with the logged-in user.
+            const guildID = "11111111-1111-1111-1111-111111111111";
+
+            async function fetchMyRequests() {
+                const container = document.getElementById(
+                    "my-requests-container",
+                );
+                container.innerHTML = "<p>Loading your requests...</p>";
+                try {
+                    const response = await fetch(
+                        `${API_BASE_URL}/event-requests/my?guild_id=${guildID}`,
+                    );
+                    if (!response.ok) {
+                        throw new Error(
+                            `HTTP error! status: ${response.status}`,
+                        );
+                    }
+                    const result = await response.json();
+
+                    if (result.success && Array.isArray(result.data)) {
+                        if (result.data.length === 0) {
+                            container.innerHTML =
+                                "<p>You have not made any event requests yet.</p>";
+                            return;
+                        }
+
+                        const table = document.createElement("table");
+                        table.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Proposed Start</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    `;
+                        const tbody = table.querySelector("tbody");
+                        result.data.forEach((req) => {
+                            const tr = document.createElement("tr");
+                            const statusClass = `status-${req.status.toLowerCase()}`;
+
+                            const approvedEventIdDisplay =
+                                req.approved_event_id &&
+                                !req.approved_event_id.startsWith("00000000")
+                                    ? req.approved_event_id
+                                    : "N/A";
+
+                            const detailsHtml = `
+                                <div class="details-content">
+                                    <p><strong>Description:</strong> ${req.description}</p>
+                                    <p><strong>Proposed End Date:</strong> ${new Date(req.proposed_end_date).toLocaleString()}</p>
+                                    <p><strong>Notes for Admin:</strong> ${req.notes || "N/A"}</p>
+                                    <p><strong>Rejection Reason:</strong> ${req.rejection_reason || "N/A"}</p>
+                                    <p><strong>Approved Event ID:</strong> ${approvedEventIdDisplay}</p>
+                                    <hr>
+                                    <h4>Participation Details</h4>
+                                    <ul>
+                                        <li>Max Guilds: ${req.participation_details.max_guilds || "N/A"}</li>
+                                        <li>Max Players per Guild: ${req.participation_details.max_players_per_guild || "N/A"}</li>
+                                    </ul>
+                                    <h4>Room Configuration</h4>
+                                    <ul>
+                                        <li>Number of Rooms: ${req.room_configuration.number_of_rooms || "N/A"}</li>
+                                        <li>Guilds per Room: ${req.room_configuration.guilds_per_room || "N/A"}</li>
+                                        <li>Room Naming Prefix: "${req.room_configuration.room_naming_prefix || "N/A"}"</li>
+                                    </ul>
+                                </div>
+                            `;
+
+                            tr.innerHTML = `
+                                <td>${req.title}</td>
+                                <td>${new Date(req.proposed_start_date).toLocaleString()}</td>
+                                <td><span class="${statusClass}">${req.status}</span></td>
+                                <td><button class="btn-details" data-details-for="${req.id}">View</button></td>
+                            `;
+
+                            const detailsTr = document.createElement("tr");
+                            detailsTr.classList.add("details-row");
+                            detailsTr.id = `details-${req.id}`;
+                            detailsTr.style.display = "none";
+                            detailsTr.innerHTML = `<td colspan="4">${detailsHtml}</td>`;
+
+                            tbody.appendChild(tr);
+                            tbody.appendChild(detailsTr);
+                        });
+                        container.innerHTML = "";
+                        container.appendChild(table);
+                    } else {
+                        container.innerHTML = `<p style="color: red;">Error: ${result.error_message || "Could not load requests."}</p>`;
+                    }
+                } catch (error) {
+                    console.error("Error fetching my requests:", error);
+                    container.innerHTML =
+                        '<p style="color: red;">Failed to fetch your requests. Is the server running?</p>';
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                playerID = localStorage.getItem("codebattle_player_id");
+                if (!playerID) {
+                    window.location.href = "/login.html";
+                    return;
+                }
+
+                fetchMyRequests();
+
+                document
+                    .getElementById("my-requests-container")
+                    .addEventListener("click", (e) => {
+                        const target = e.target;
+                        if (target.classList.contains("btn-details")) {
+                            const detailsId = `details-${target.dataset.detailsFor}`;
+                            const detailsRow =
+                                document.getElementById(detailsId);
+                            if (detailsRow) {
+                                if (detailsRow.style.display === "none") {
+                                    detailsRow.style.display = "";
+                                    target.textContent = "Hide";
+                                } else {
+                                    detailsRow.style.display = "none";
+                                    target.textContent = "View";
+                                }
+                            }
+                        }
+                    });
+
+                const form = document.getElementById("request-event-form");
+                form.addEventListener("submit", async (e) => {
+                    e.preventDefault();
+                    const resultContainer =
+                        document.getElementById("request-result");
+                    resultContainer.innerHTML = `<div style="color: blue;">Submitting request...</div>`;
+
+                    const formData = new FormData(form);
+                    const payload = {
+                        requester_guild_id: guildID,
+                        event_type: "code_battle", // Hardcoded for now
+                        title: formData.get("title"),
+                        description: formData.get("description"),
+                        proposed_start_date: new Date(
+                            formData.get("start_date"),
+                        ).toISOString(),
+                        proposed_end_date: new Date(
+                            formData.get("end_date"),
+                        ).toISOString(),
+                        participation: {
+                            max_guilds: parseInt(
+                                formData.get("max_guilds"),
+                                10,
+                            ),
+                            max_players_per_guild: parseInt(
+                                formData.get("max_players"),
+                                10,
+                            ),
+                        },
+                        room_configuration: {
+                            number_of_rooms: parseInt(
+                                formData.get("num_rooms"),
+                                10,
+                            ),
+                            guilds_per_room: 2, // Hardcoded for simplicity
+                            room_naming_prefix: formData.get("room_prefix"),
+                        },
+                        notes: formData.get("notes"),
+                    };
+
+                    try {
+                        const response = await fetch(
+                            `${API_BASE_URL}/event-requests`,
+                            {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(payload),
+                            },
+                        );
+                        const result = await response.json();
+                        if (response.ok && result.success) {
+                            resultContainer.innerHTML = `<div style="color: green;"><strong>Success!</strong> Your event request has been submitted for approval.</div>`;
+                            form.reset();
+                            fetchMyRequests(); // Refresh the list
+                        } else {
+                            resultContainer.innerHTML = `<div style="color: red;"><strong>Error:</strong> ${result.error_message || "An unknown error occurred."}</div>`;
+                        }
+                    } catch (error) {
+                        console.error("Error submitting event request:", error);
+                        resultContainer.innerHTML = `<div style="color: red;">A client-side error occurred.</div>`;
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>

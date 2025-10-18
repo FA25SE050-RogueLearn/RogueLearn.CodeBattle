@@ -17,6 +17,7 @@ const (
 	ROOM_DELETED               EventType = "ROOM_DELETED"
 	COMPILATION_TEST           EventType = "COMPILATION_TEST"
 	LEADERBOARD_UPDATED        EventType = "LEADERBOARD_UPDATED"
+	GUILD_LEADERBOARD_UPDATED  EventType = "GUILD_LEADERBOARD_UPDATED"
 )
 
 // Event wrapper for the listener

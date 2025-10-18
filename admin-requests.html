@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Admin: Event Requests - RogueLearn CodeBattle</title>
+        <style>
+            /* [Reusing styles] */
+            body {
+                font-family: sans-serif;
+                margin: 20px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 1200px;
+                margin: auto;
+                background: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+            h1,
+            h2 {
+                color: #333;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+            th,
+            td {
+                border: 1px solid #ddd;
+                padding: 12px;
+                text-align: left;
+                vertical-align: middle;
+            }
+            th {
+                background-color: #f2f2f2;
+            }
+            .status-pending {
+                color: #f0ad4e;
+                font-weight: bold;
+            }
+            .status-approved {
+                color: #5cb85c;
+                font-weight: bold;
+            }
+            .status-rejected {
+                color: #d9534f;
+                font-weight: bold;
+            }
+            .actions button {
+                padding: 5px 10px;
+                font-size: 12px;
+                margin-right: 5px;
+                cursor: pointer;
+                border-radius: 4px;
+            }
+            .btn-approve {
+                background-color: #5cb85c;
+                color: white;
+                border: none;
+            }
+            .btn-decline {
+                background-color: #d9534f;
+                color: white;
+                border: none;
+            }
+            .btn-details {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .details-row > td {
+                background-color: #f9f9f9;
+                padding: 20px;
+            }
+            .details-content h4 {
+                margin-top: 15px;
+                margin-bottom: 5px;
+                color: #333;
+            }
+            .details-content ul {
+                list-style-type: disc;
+                padding-left: 20px;
+                margin: 0;
+            }
+            .details-content p {
+                margin: 5px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Admin Dashboard: Event Requests</h1>
+            <p><a href="./index.html">&larr; Back to Lobby</a></p>
+
+            <div id="filter-controls">
+                <label for="status-filter">Filter by status:</label>
+                <select id="status-filter">
+                    <option value="">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+
+            <div id="requests-container">
+                <p>Loading requests...</p>
+            </div>
+        </div>
+
+        <script>
+            const API_BASE_URL = "http://localhost:8080";
+
+            async function fetchRequests(status = "") {
+                const container = document.getElementById("requests-container");
+                container.innerHTML = "<p>Loading requests...</p>";
+                let url = `${API_BASE_URL}/admin/event-requests`;
+                if (status) {
+                    url += `?status=${status}`;
+                }
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok)
+                        throw new Error(
+                            `HTTP error! status: ${response.status}`,
+                        );
+                    const result = await response.json();
+
+                    if (result.success && Array.isArray(result.data)) {
+                        renderTable(result.data);
+                    } else {
+                        container.innerHTML = `<p style="color: red;">Error: ${result.error_message || "Could not load requests."}</p>`;
+                    }
+                } catch (error) {
+                    console.error("Error fetching requests:", error);
+                    container.innerHTML =
+                        '<p style="color: red;">Failed to fetch requests. Is the server running?</p>';
+                }
+            }
+
+            function renderTable(requests) {
+                const container = document.getElementById("requests-container");
+                if (requests.length === 0) {
+                    container.innerHTML =
+                        "<p>No requests found for this filter.</p>";
+                    return;
+                }
+
+                const table = document.createElement("table");
+                table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Requester Guild ID</th>
+                        <th>Proposed Start</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+                const tbody = table.querySelector("tbody");
+                requests.forEach((req) => {
+                    const tr = document.createElement("tr");
+                    tr.dataset.requestId = req.id;
+                    const statusClass = `status-${req.status.toLowerCase()}`;
+
+                    let actionsHtml = "N/A";
+                    if (req.status === "pending") {
+                        actionsHtml = `
+                        <div class="actions">
+                            <button class="btn-approve" data-id="${req.id}">Approve</button>
+                            <button class="btn-decline" data-id="${req.id}">Decline</button>
+                        </div>
+                    `;
+                    }
+
+                    const approvedEventIdDisplay =
+                        req.approved_event_id &&
+                        !req.approved_event_id.startsWith("00000000")
+                            ? req.approved_event_id
+                            : "N/A";
+
+                    const detailsHtml = `
+                        <div class="details-content">
+                            <p><strong>Description:</strong> ${req.description}</p>
+                            <p><strong>Proposed End Date:</strong> ${new Date(req.proposed_end_date).toLocaleString()}</p>
+                            <p><strong>Notes for Admin:</strong> ${req.notes || "N/A"}</p>
+                            <p><strong>Rejection Reason:</strong> ${req.rejection_reason || "N/A"}</p>
+                            <p><strong>Approved Event ID:</strong> ${approvedEventIdDisplay}</p>
+                            <hr>
+                            <h4>Participation Details</h4>
+                            <ul>
+                                <li>Max Guilds: ${req.participation_details.max_guilds}</li>
+                                <li>Max Players per Guild: ${req.participation_details.max_players_per_guild}</li>
+                            </ul>
+                            <h4>Room Configuration</h4>
+                            <ul>
+                                <li>Number of Rooms: ${req.room_configuration.number_of_rooms}</li>
+                                <li>Guilds per Room: ${req.room_configuration.guilds_per_room}</li>
+                                <li>Room Naming Prefix: "${req.room_configuration.room_naming_prefix}"</li>
+                            </ul>
+                        </div>
+                    `;
+
+                    tr.innerHTML = `
+                        <td>${req.title}</td>
+                        <td>${req.requester_guild_id}</td>
+                        <td>${new Date(req.proposed_start_date).toLocaleString()}</td>
+                        <td><span class="${statusClass}">${req.status}</span></td>
+                        <td>${actionsHtml}</td>
+                        <td><button class="btn-details" data-details-for="${req.id}">View</button></td>
+                    `;
+
+                    const detailsTr = document.createElement("tr");
+                    detailsTr.classList.add("details-row");
+                    detailsTr.id = `details-${req.id}`;
+                    detailsTr.style.display = "none";
+                    detailsTr.innerHTML = `<td colspan="6">${detailsHtml}</td>`;
+
+                    tbody.appendChild(tr);
+                    tbody.appendChild(detailsTr);
+                });
+                container.innerHTML = "";
+                container.appendChild(table);
+            }
+
+            async function processRequest(requestId, action, reason = "") {
+                const url = `${API_BASE_URL}/admin/event-requests/${requestId}/process`;
+                const payload = { action };
+                if (action === "decline") {
+                    payload.rejection_reason = reason;
+                }
+
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        alert(`Request successfully ${action}ed.`);
+                        fetchRequests(
+                            document.getElementById("status-filter").value,
+                        ); // Refresh list
+                    } else {
+                        alert(
+                            `Error: ${result.error_message || "Failed to process request."}`,
+                        );
+                    }
+                } catch (error) {
+                    console.error("Error processing request:", error);
+                    alert("A client-side error occurred.");
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                // In a real app, you would have admin authentication here
+                fetchRequests();
+
+                document
+                    .getElementById("status-filter")
+                    .addEventListener("change", (e) => {
+                        fetchRequests(e.target.value);
+                    });
+
+                document
+                    .getElementById("requests-container")
+                    .addEventListener("click", (e) => {
+                        const target = e.target;
+
+                        if (target.classList.contains("btn-details")) {
+                            const detailsId = `details-${target.dataset.detailsFor}`;
+                            const detailsRow = document.getElementById(detailsId);
+                            if (detailsRow) {
+                                if (detailsRow.style.display === "none") {
+                                    detailsRow.style.display = "";
+                                    target.textContent = "Hide";
+                                } else {
+                                    detailsRow.style.display = "none";
+                                    target.textContent = "View";
+                                }
+                            }
+                            return;
+                        }
+
+                        const requestId = target.dataset.id;
+                        if (!requestId) return;
+
+                        if (target.classList.contains("btn-approve")) {
+                            if (
+                                confirm(
+                                    "Are you sure you want to approve this event?",
+                                )
+                            ) {
+                                processRequest(requestId, "approve");
+                            }
+                        } else if (target.classList.contains("btn-decline")) {
+                            const reason = prompt(
+                                "Please provide a reason for declining this request:",
+                            );
+                            if (reason) {
+                                // Only proceed if a reason is given
+                                processRequest(requestId, "decline", reason);
+                            } else if (reason !== null) {
+                                // User clicked OK without typing anything
+                                alert(
+                                    "A reason is required to decline a request.",
+                                );
+                            }
+                        }
+                    });
+            });
+        </script>
+    </body>
+</html>

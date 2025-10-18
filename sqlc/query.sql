@@ -1,11 +1,23 @@
 -- Events
 -- name: CreateEvent :one
-INSERT INTO events (title, description, type, started_date, end_date)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO events (
+  title,
+  description,
+  type,
+  started_date,
+  end_date,
+  max_guilds,
+  max_players_per_guild,
+  number_of_rooms,
+  guilds_per_room,
+  room_naming_prefix,
+  original_request_id
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: GetEventByID :one
-SELECT * FROM events WHERE id = $1;
+-- SELECT * FROM events WHERE id = $1;
 
 -- name: GetEvents :many
 SELECT * FROM events
@@ -25,7 +37,17 @@ ORDER BY started_date ASC;
 
 -- name: UpdateEvent :one
 UPDATE events
-SET title = $2, description = $3, type = $4, started_date = $5, end_date = $6
+SET
+  title = $2,
+  description = $3,
+  type = $4,
+  started_date = $5,
+  end_date = $6,
+  max_guilds = $7,
+  max_players_per_guild = $8,
+  number_of_rooms = $9,
+  guilds_per_room = $10,
+  room_naming_prefix = $11
 WHERE id = $1
 RETURNING *;
 
@@ -406,8 +428,8 @@ DELETE FROM submissions WHERE id = $1;
 
 -- Leaderboard Entries
 -- name: CreateLeaderboardEntry :one
-INSERT INTO leaderboard_entries (user_id, event_id, rank, score)
-VALUES ($1, $2, $3, $4)
+INSERT INTO leaderboard_entries (user_id, username, event_id, rank, score)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetLeaderboardByEvent :many
@@ -445,33 +467,21 @@ SET place = rp_ranked.new_place
 FROM ranked_players rp_ranked
 WHERE rp.room_id = $1 AND rp.user_id = rp_ranked.user_id;
 
--- name: CalculateGuildLeaderboard :exec
-WITH ranked_guilds AS (
-  SELECT
-    rg1.guild_id,
-    RANK() OVER (ORDER BY total_score DESC) as new_place
-  FROM guild_leaderboard_entries rg1
-  WHERE rg1.guild_id = $1 AND rg1.event_id= $2
-)
-UPDATE guild_leaderboard_entries gl
-SET place = rg.new_place
-FROM ranked_guilds rg2
-WHERE gl.guild_id = rg2.guild_id AND gl.event_id = rg2.event_id;
 
 -- name: UpdateLeaderboardEntry :one
 UPDATE leaderboard_entries
-SET rank = $3, score = $4
-WHERE user_id = $1 AND event_id = $2
+SET rank = $2, score = $3
+WHERE id = $1
 RETURNING *;
 
 -- name: DeleteLeaderboardEntry :exec
 DELETE FROM leaderboard_entries
-WHERE user_id = $1 AND event_id = $2;
+WHERE id = $1;
 
 -- Guild Leaderboard Entries
 -- name: CreateGuildLeaderboardEntry :one
-INSERT INTO guild_leaderboard_entries (guild_id, event_id, rank, total_score)
-VALUES ($1, $2, $3, $4)
+INSERT INTO guild_leaderboard_entries (guild_id, guild_name, event_id, rank, total_score)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetGuildLeaderboardByEvent :many
@@ -498,13 +508,31 @@ ORDER BY gle1.rank ASC;
 
 -- name: UpdateGuildLeaderboardEntry :one
 UPDATE guild_leaderboard_entries
-SET rank = $3, total_score = $4
-WHERE guild_id = $1 AND event_id = $2
+SET rank = $2, total_score = $3
+WHERE id = $1
 RETURNING *;
 
 -- name: DeleteGuildLeaderboardEntry :exec
 DELETE FROM guild_leaderboard_entries
-WHERE guild_id = $1 AND event_id = $2;
+WHERE id = $1;
+
+-- name: CalculateGuildLeaderboard :exec
+WITH latest_snapshot_time AS (
+  SELECT MAX(gle1.snapshot_date) as snapshot_time
+  FROM guild_leaderboard_entries gle1
+  WHERE gle1.event_id = $1
+),
+ranked_entries AS (
+  SELECT
+    id,
+    RANK() OVER (ORDER BY total_score DESC) as new_rank
+  FROM guild_leaderboard_entries gle2
+  WHERE gle2.event_id = $1 AND gle2.snapshot_date = (SELECT gle3.snapshot_time FROM latest_snapshot_time gle3)
+)
+UPDATE guild_leaderboard_entries gle
+SET rank = re.new_rank
+FROM ranked_entries re
+WHERE gle.id = re.id;
 
 -- Complex Queries
 -- name: GetEventWithProblemsAndLanguages :many
@@ -528,7 +556,7 @@ SELECT
 FROM room_players rp
 LEFT JOIN submissions s ON rp.user_id = s.user_id AND s.room_id = rp.room_id
 WHERE rp.room_id = $1
-GROUP BY rp.room_id, rp.user_id, rp.score, rp.place, rp.state, rp.disconnected_at
+GROUP BY rp.room_id, rp.user_id
 ORDER BY rp.score DESC, rp.place ASC;
 
 -- name: GetUserSubmissionStats :one
@@ -536,7 +564,7 @@ SELECT
     COUNT(*) as total_submissions,
     COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted_count,
     COUNT(CASE WHEN status = 'wrong_answer' THEN 1 END) as wrong_answer_count,
-    COUNT(CASE WHEN status = 'time_limit_exceeded' THEN 1 END) as timeout_count,
+    COUNT(CASE WHEN status = 'limit_exceed' THEN 1 END) as timeout_count,
     AVG(execution_time_ms) as avg_execution_time
 FROM submissions
 WHERE user_id = $1;
@@ -549,3 +577,44 @@ SELECT
     ROUND(COUNT(CASE WHEN status = 'accepted' THEN 1 END) * 100.0 / COUNT(*), 2) as acceptance_rate
 FROM submissions
 WHERE code_problem_id = $1;
+
+-- Event Requests
+-- name: CreateEventRequest :one
+INSERT INTO event_requests (
+  requester_guild_id, event_type, title, description,
+  proposed_start_date, proposed_end_date, notes,
+  participation_details, room_configuration, event_specifics
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+) RETURNING *;
+
+-- name: GetEventRequestByID :one
+SELECT * FROM event_requests WHERE id = $1;
+
+-- name: ListEventRequests :many
+SELECT * FROM event_requests
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: ListEventRequestsByStatus :many
+SELECT * FROM event_requests
+WHERE status = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: ListEventRequestsByGuild :many
+SELECT * FROM event_requests
+WHERE requester_guild_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: UpdateEventRequestStatus :one
+UPDATE event_requests
+SET
+  status = $2,
+  processed_by_admin_id = $3,
+  processed_at = NOW(),
+  rejection_reason = $4,
+  approved_event_id = $5
+WHERE id = $1
+RETURNING *;
